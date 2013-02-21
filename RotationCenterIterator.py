@@ -217,18 +217,7 @@ According to Fede, the filters in gridrec are:
 
 # Test if the user input the correct filter name (if any).
 if options.Filter:
-    if options.Filter == 'dpc' or \
-        options.Filter == 'hann' or \
-        options.Filter == 'hamm' or \
-        options.Filter == 'hamming' or \
-        options.Filter == 'lanc' or \
-        options.Filter == 'parz' or \
-        options.Filter == 'parzen' or \
-        options.Filter == 'ramlak' or \
-        options.Filter == 'ramp' or	\
-        options.Filter == 'shlo' or \
-        options.Filter == 'shepp' or \
-        options.Filter == 'none':
+    if options.Filter in ('dpc', 'hann', 'hamm', 'hamming', 'lanc', 'parz', 'parzen', 'ramlak', 'ramp', 'shlo', 'shepp', 'none'):
         print 'Passing the "' + options.Filter + '" Filter to gridrec.'
     else:
         print 'You probably have a ypot in the filter-name. :)'
@@ -306,7 +295,7 @@ else:
         else:
             os.system(reccommand + '> /dev/null')
         # Rename the reconstructed file to 'filename.rotationcenter.rec.dmp'
-        renamecommand = 'mv ' + os.path.abspath(options.SinDir) + '/' +  SampleName + str(Sinogram) + '.rec.DMP ' + os.path.abspath(options.SinDir) + '/' + SampleName + str(Sinogram) + '.' + str("%.03f" % RotationCenter[i]) + '.rec.DMP'
+        renamecommand = 'mv ' + os.path.abspath(options.SinDir) + '/' + SampleName + str(Sinogram) + '.rec.DMP ' + os.path.abspath(options.SinDir) + '/' + SampleName + str(Sinogram) + '.' + str("%.03f" % RotationCenter[i]) + '.rec.DMP'
         if options.Verbose:
             print 80 * '_'
             print

@@ -1,8 +1,10 @@
 #!/usr/bin/python
 
-# Script to reconstruct one single slice
-# # Calls 'gridrec_zp_64' on gws-2 with the rotation center noted in the
-# log file (or asks for a value). Then calls fiji.
+'''
+Script to reconstruct one single slice
+Calls 'gridrec_zp_64' on gws-2 with the rotation center noted in the log file 
+(or asks for a value). Then calls fiji.
+'''
 
 # First version: 21.01.2013. Based on RotationCenterIterator.py
 
@@ -148,23 +150,12 @@ if options.debug:
 
 # Test if the user input the correct filter name (if any).
 if options.Filter:
-	if options.Filter == 'dpc' or \
-		options.Filter == 'hann' or \
-		options.Filter == 'hamm' or \
-		options.Filter == 'hamming' or \
-		options.Filter == 'lanc' or \
-		options.Filter == 'parz' or \
-		options.Filter == 'parzen' or \
-		options.Filter == 'ramlak' or \
-		options.Filter == 'ramp' or	\
-		options.Filter == 'shlo' or \
-		options.Filter == 'shepp' or \
-		options.Filter == 'none':
+	if options.Filter in ('dpc', 'hann', 'hamm', 'hamming', 'lanc', 'parz', 'parzen', 'ramlak', 'ramp', 'shlo', 'shepp', 'none'):
 		print 'Passing the "' + options.Filter + '" Filter to gridrec.'
 	else:
 		print 'You probably have a ypot in the filter-name. :)'
 		print 'You can only enter one of these:'
-		print '    * Shepp-Logan (default)  (called by shlo or shepp)'
+        print '    * Shepp-Logan (default)  (called by shlo or shepp)'
 		print '    * Hanning (hann)'
 		print '    * Hamming (hamm or hamming)'
 		print '    * Ramp (ramp or ramlak)'
@@ -256,6 +247,6 @@ print 'Done with the reconstruction of Sinogram',Sinogram,'of Sample',SampleName
 print '________________________________________________________________________________'
 
 if options.Test:
-	print
-	print '                 I was just testing, nothing really happened!'
-	print '________________________________________________________________________________'
+    print
+    print '                 I was just testing, nothing really happened!'
+    print 80 *'_'
