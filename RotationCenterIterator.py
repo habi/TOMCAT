@@ -103,7 +103,6 @@ if options.SinDir is None:
     print ''
     sys.exit(1)
 
-
 def query_yes_no(question, default="yes"):
     # from http://code.activestate.com/recipes/577058/
     '''

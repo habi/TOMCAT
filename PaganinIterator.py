@@ -34,6 +34,9 @@ parser.add_option('-z', dest='Distance', default=50, type='int',
 parser.add_option('-r', '--range', dest='Range', type='int',
 	help='Range of powers you want to iterate through',
 	metavar='3')
+parser.add_option('-c', '--center', dest='RotationCenter', type='float',
+    help='RotationCenter for reconstructing the slices (Default=Read from logfile or set to 1024 if nothing found in logfile)',
+    metavar='1280.5')
 parser.add_option('-v', '--verbose', dest='Verbose', default=0, action='store_true',
 	help='Be really chatty, (Default of the script is silent)',
 	metavar=1)
@@ -53,55 +56,82 @@ if options.SampleFolder is None:
 	sys.exit(1)
 
 if options.Delta is None:
-	print 'please enter a Delta value with the -d parameter'
-	sys.exit(1)
+    print 'Your command was "' + ' '.join(sys.argv) + '"'
+    print 'I cannot find a Delta value.'
+    print
+    print 'please enter a Delta value with the -d parameter'
+    sys.exit(1)
 	
 if options.Beta is None:
-	print 'please enter a Beta value with the -b parameter'
-	sys.exit(1)
+    print 'Your command was "' + ' '.join(sys.argv) + '"'
+    print 'I cannot find a Beta value.'
+    print
+    print 'please enter a Beta value with the -b parameter'
+    sys.exit(1)
 	
 if options.Range is None:
-	print 'please enter a range you want to iterate over with the -r parameter'
-	sys.exit(1)	
+    print 'Your command was "' + ' '.join(sys.argv) + '"'
+    print 'I cannot find a range to iterate.'
+    print
+    print 'please enter a range you want to iterate over with the -r parameter'
+    sys.exit(1)
 
 # Assemble Directory- and Samplenames and prepare all other parameters
-## test if the directory exists, if not, tell the user
-if os.path.exists(options.SampleFolder) is False:
-	print
-	print 'Directory "' + options.SampleFolder + '" not found, please try again with full (and correct) path.'
-	print
-try:
-	SampleFolder = os.path.basename(os.path.dirname(os.path.abspath(options.SampleFolder)))
-	# abspath "converts" trailing backslash or not to a nice path, getting
-	# rid of relative pathnames. The dirname wrapped around it gets rid 
-	# of the Sin-Directory and the additional basename around it extracts
-	# the Directory-name of the sample.
-except:
-	print 'I was not able to deduce a SampleFolder from your input.'
-	print "Please specify a path like this './SampleFolder/' with the '-D'-option."
-	print 'It is probably best if you try again with the absolute path...'
-	
+SampleName = os.path.basename(os.path.abspath(options.SampleFolder))
+
+# Get RotationCenter from Logfile, or set it to 1024 if not found.
+if options.RotationCenter is None:
+    LogFileLocation = os.path.join(options.SampleFolder, 'tif', SampleName + '.log')
+    print LogFileLocation
+    if options.Verbose:
+        print 'Trying to get RotationCenter from', LogFileLocation
+    LogFile = open(LogFileLocation, 'r')
+    # Go through all the lines in the logfile
+    for line in LogFile:
+        # split each line at the spaces
+        currentline = line.split()
+        # if there's a line and the first and second word are "Rotation" and "center"
+        # get the value after the :, strip it from all spaces and convert string to number
+        # set this value to be the Rotationcenter
+        if len(currentline) > 0:
+            if (currentline[0] == 'Rotation' and currentline[1] == 'center'):
+                options.RotationCenter = float(line.split(':')[1].strip())
+    if options.Verbose:
+        print 'Rotation center set to', options.RotationCenter
+    if options.RotationCenter is None:
+        options.RotationCenter = 1024
+        if options.Verbose:
+            print 'No Rotation center found in LogFile, setting it to 1024.'
+
 if options.Test:
 	print 'I would do this'
 
 for i in range(-options.Range,options.Range+1):
-	Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
-	# Construct Paganin-call
-	ReconstructionCommand = ' '.join(['~/scripts/sinooff_tomcat_paganin.py',os.path.abspath(os.path.join(options.SampleFolder,'tif')),str(Delta),str(options.Beta),str(options.Distance)])
-	MoveSinogramsCommand = ' '.join(['mv',os.path.abspath(os.path.join(options.SampleFolder,'sin')),os.path.abspath(os.path.join(options.SampleFolder,'sin_' + str(Delta) + '_' + str(options.Beta)))])
-	MoveFilteredProjectionsCommand = ' '.join(['mv',os.path.abspath(os.path.join(options.SampleFolder,'fltp')),os.path.abspath(os.path.join(options.SampleFolder,'fltp_' + str(Delta) + '_' + str(options.Beta)))])
-	if options.Test:
-		print ReconstructionCommand
-		print MoveSinogramsCommand
-		print MoveFilteredProjectionsCommand
-		print 80 * '_'
-	else:
-		print 'Reconstructing'
-		print os.system(ReconstructionCommand)
-		print 'Renaming sinogram folder'
-		print os.system(MoveSinogramsCommand)
-		print 'Renaming filtered projections folder'
-		print os.system(MoveFilteredProjectionsCommand)
+    Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
+    # Construct Paganin-call
+    SinogramCommand = ' '.join(['~/scripts/sinooff_tomcat_paganin.py',os.path.abspath(os.path.join(options.SampleFolder,'tif')),str(Delta),str(options.Beta),str(options.Distance)])
+    ReconstructionCommand = 'gridrec' + ' -c ' + str(options.RotationCenter) + ' ' + os.path.abspath(os.path.join(options.SampleFolder,'sin'))
+    MoveRecCommand = ' '.join(['mv',os.path.abspath(os.path.join(options.SampleFolder,'sin','*rec*')),os.path.abspath(os.path.join(options.SampleFolder,'rec_' + str(Delta) + '_' + str(options.Beta)))])
+    MoveSinogramsCommand = ' '.join(['mv',os.path.abspath(os.path.join(options.SampleFolder,'sin')),os.path.abspath(os.path.join(options.SampleFolder,'sin_' + str(Delta) + '_' + str(options.Beta)))])
+    MoveFilteredProjectionsCommand = ' '.join(['mv',os.path.abspath(os.path.join(options.SampleFolder,'fltp')),os.path.abspath(os.path.join(options.SampleFolder,'fltp_' + str(Delta) + '_' + str(options.Beta)))])   
+    if options.Test:
+        print SinogramCommand
+        print ReconstructionCommand
+        print MoveRecCommand
+        print MoveSinogramsCommand
+        print MoveFilteredProjectionsCommand
+        print 80 * '_'
+    else:
+        print 'Generating sinograms'
+        os.system(SinogramCommand)
+        print 'Reconstructing sinograms'
+        os.system(ReconstructionCommand)
+        print 'Moving reconstructions'
+        os.system(MoveRecCommand)
+        print 'Renaming sinogram folder'
+        os.system(MoveSinogramsCommand)
+        print 'Renaming filtered projections folder'
+        os.system(MoveFilteredProjectionsCommand)
 
 if options.Test:
 	print 'I was just testing'
