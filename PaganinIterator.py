@@ -30,7 +30,7 @@ parser.add_option('-b', '--Beta', dest='Beta', type='float',
                   help='Beta you want to start with',
                   metavar='3e-10')
 parser.add_option('-z', dest='Distance', default=50, type='int',
-                  help='Distance to the scintillator in mm',
+                  help='Distance to the scintillator in mm (default = 50mm)',
                   metavar=33)
 parser.add_option('-r', '--range', dest='Range', type='int',
                   help='Range of powers you want to iterate through',
