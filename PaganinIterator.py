@@ -110,7 +110,9 @@ for i in range(-options.Range, options.Range+1):
     Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
     # Construct Paganin-call
     SinogramCommand = ' '.join(['~/scripts/sinooff_tomcat_paganin.py', os.path.abspath(os.path.join(options.SampleFolder, 'tif')), str(Delta), str(options.Beta), str(options.Distance)])
-    ReconstructionCommand = 'gridrec -f parzen -c ' + str(options.RotationCenter) + ' -D ' + os.path.abspath(os.path.join(options.SampleFolder, 'sin')) + ' -O ' + os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta))) 
+    os.mkdir(os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta))))
+    ReconstructionCommand = 'gridrec -f parzen -c ' + str(options.RotationCenter) + ' -D ' + os.path.abspath(os.path.join(options.SampleFolder, 'sin')) 
+    ' -O ' + os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta))) 
     MoveSinogramsCommand = ' '.join(['mv', os.path.abspath(os.path.join(options.SampleFolder, 'sin')), os.path.abspath(os.path.join(options.SampleFolder, 'sin_' + str(Delta) + '_' + str(options.Beta)))])
     MoveFilteredProjectionsCommand = ' '.join(['mv', os.path.abspath(os.path.join(options.SampleFolder, 'fltp')), os.path.abspath(os.path.join(options.SampleFolder, 'fltp_' + str(Delta) + '_' + str(options.Beta)))])
     if options.Test:
