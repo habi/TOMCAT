@@ -304,7 +304,11 @@ else:
         os.system(renamecommand)
 
 # Display Calculated Sinograms for the User
-if options.Test is False:
+if options.Test:
+    print
+    print '                 I was just testing, nothing really happened!'
+    print 80 * '_'
+else:
     viewcommand = 'fiji -eval \'run("Image Sequence...", "open=' + os.path.abspath(options.SinDir) + ' starting=1 increment=1 scale=100 file=rec or=[] sort");\' &'
     os.system(viewcommand)
     print 80 * '_'
@@ -316,16 +320,10 @@ if options.Test is False:
     print 'Since the files have been renamed, you should be able browse through the'
     print 'stack and thus find the best Rotationcenter!'
 
-print 80 * '_'
-print
-print 'Done with', len(RotationCenter), 'Rotationcenters:'
-print '  - of Sinogram', Sinogram
-print '  - of Sample', SampleName
-print '  - varying from', str(RotationCenter[0]) + '-' + str(RotationCenter[-1])
-
-print 80 * '_'
-
-if options.Test:
+    print 80 * '_'
     print
-    print '                 I was just testing, nothing really happened!'
+    print 'Done with', len(RotationCenter), 'Rotationcenters:'
+    print '  - of Sinogram', Sinogram
+    print '  - of Sample', SampleName
+    print '  - varying from', str(RotationCenter[0]) + '-' + str(RotationCenter[-1])
     print 80 * '_'
