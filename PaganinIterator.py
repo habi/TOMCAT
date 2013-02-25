@@ -3,11 +3,18 @@
 '''
 Script to reconstruct a sample with different Paganin parameters.
 Very loosely based on Peter Modreggers 'pags' bash script
+
+Use
+rm /work/sls/bin/PaganinIterator.py 
+cp /afs/psi.ch/user/h/haberthuer/Dev/PaganinIterator.py /work/sls/bin/
+chmod 0777 /work/sls/bin/PaganinIterator.py
+to make it available for all users. You can probably only use this on SLSLC..
 '''
 
 # First version: 2013-02-18: Based on ReconstructSinogram.py
 # 2013-02-21: Cleanup
 # 2013-02-22: Jacky suggested to add the 'z'-Parameter to the output
+# 2013-02-25: Bernd suggested to add a check if commands are run successfully
 
 import sys
 import os
@@ -111,12 +118,12 @@ if options.Test:
 for i in range(-options.Range, options.Range+1):
     Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
     # Construct Paganin-call
-    SinogramCommand = ' '.join(['~/scripts/sinooff_tomcat_paganin.py', os.path.abspath(os.path.join(options.SampleFolder, 'tif')), str(Delta), str(options.Beta), str(options.Distance)])
+    SinogramCommand = ' '.join(['sinooff_tomcat_paganin.py', os.path.abspath(os.path.join(options.SampleFolder, 'tif')), str(Delta), str(options.Beta), str(options.Distance)])
     try:
         os.mkdir(os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance))))
     except:
         pass
-    ReconstructionCommand = 'gridrec -f parzen -c ' + str(options.RotationCenter) + ' -D ' + os.path.abspath(os.path.join(options.SampleFolder, 'sin')) + ' -O ' + os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta)))
+    ReconstructionCommand = 'gridrec -f parzen -c ' + str(options.RotationCenter) + ' -D ' + os.path.abspath(os.path.join(options.SampleFolder, 'sin')) + ' -O ' + os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))
     MoveSinogramsCommand = ' '.join(['mv', os.path.abspath(os.path.join(options.SampleFolder, 'sin')), os.path.abspath(os.path.join(options.SampleFolder, 'sin_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))])
     MoveFilteredProjectionsCommand = ' '.join(['mv', os.path.abspath(os.path.join(options.SampleFolder, 'fltp')), os.path.abspath(os.path.join(options.SampleFolder, 'fltp_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))])
     if options.Test:
@@ -128,23 +135,19 @@ for i in range(-options.Range, options.Range+1):
     else:
         print 'Generating sinograms'
         if os.system(SinogramCommand) is not 0:
-            print 'Something went wrong with the sinogram generation'
-            print 'exiting'
+            print 'Could not generate sinograms, exiting'
             sys.exit(1)
         print 'Reconstructing sinograms into renamed folder'
-        if os.system(ReconstructionCommand) is not 0:
-            print 'Something went wrong with the reconstruction command'
-            print 'exiting'
+        if os.system(ReconstructionCommand)  is not 0:
+            print 'Could not reconstruct sinograms, exiting'
             sys.exit(1)
         print 'Renaming sinogram folder'
-        if os.system(MoveSinogramsCommand) is not 0:
-            print 'I could not rename the sinogram directory'
-            print 'exiting'
+        if os.system(MoveSinogramsCommand)  is not 0:
+            print 'Could not rename sinogram folder, exiting'
             sys.exit(1)
         print 'Renaming filtered projections folder'
         if os.system(MoveFilteredProjectionsCommand) is not 0:
-            print 'I could not rename the fltp directory'
-            print 'exiting'
+            print 'Could not rename filtered projections folder, exiting'
             sys.exit(1)
 
 if options.Test:
@@ -161,4 +164,4 @@ else:
     print 'and the reconstruction directories'
     for i in range(-options.Range, options.Range+1):
         Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
-        print '    *', os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Beta)))
+        print '    *', os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))
