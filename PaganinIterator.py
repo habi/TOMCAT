@@ -119,10 +119,6 @@ for i in range(-options.Range, options.Range+1):
     Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
     # Construct Paganin-call
     SinogramCommand = ' '.join(['sinooff_tomcat_paganin.py', os.path.abspath(os.path.join(options.SampleFolder, 'tif')), str(Delta), str(options.Beta), str(options.Distance)])
-    try:
-        os.mkdir(os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance))))
-    except:
-        pass
     ReconstructionCommand = 'gridrec -f parzen -c ' + str(options.RotationCenter) + ' -D ' + os.path.abspath(os.path.join(options.SampleFolder, 'sin')) + ' -O ' + os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))
     MoveSinogramsCommand = ' '.join(['mv', os.path.abspath(os.path.join(options.SampleFolder, 'sin')), os.path.abspath(os.path.join(options.SampleFolder, 'sin_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))])
     MoveFilteredProjectionsCommand = ' '.join(['mv', os.path.abspath(os.path.join(options.SampleFolder, 'fltp')), os.path.abspath(os.path.join(options.SampleFolder, 'fltp_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))])
@@ -138,6 +134,10 @@ for i in range(-options.Range, options.Range+1):
             print 'Could not generate sinograms, exiting'
             sys.exit(1)
         print 'Reconstructing sinograms into renamed folder'
+        try:
+            os.mkdir(os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance))))
+        except:
+            pass
         if os.system(ReconstructionCommand)  is not 0:
             print 'Could not reconstruct sinograms, exiting'
             sys.exit(1)
