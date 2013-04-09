@@ -108,7 +108,8 @@ parser.add_option('-m', '--multiprocess', dest='Multiprocess',
                   action='store_true',
                   help='Use multiple cores. To make this work, you have to '
                   'load additional modules! Use "module load xbl/epd_free" in '
-                  'the terminal on 02da-cons-2',
+                  'the terminal to try to load those. They should be there '
+                  'on "x02da-cons-2".',
                   metavar=1)
 parser.add_option('-v', '--verbose', dest='Verbose',
                   default=0,
@@ -412,9 +413,14 @@ else:
         try:
             import multiprocessing
         except:
-            raise Exception('Can not import python module multiprocessing.',
-                            'Additional modules have to be loaded! Run',
-                            '"module load xbl/epd_free" on x02da-cons-2.')
+            print 'I can not import the python module multiprocessing.',\
+                'Additional modules have to be loaded! Run "module load',\
+                ' xbl/epd_free" to try to load them. Afterwards (if you are',\
+                'on x02da-cn*), you unfortunately need to call the script',\
+                'again with the absolute path and "python" before it. It',\
+                'should work if you call "python', ' '.join(sys.argv) + '"',\
+                '(with the absolute path of the RotationCenterIterator!)'
+            sys.exit(1)
         print 'Using "multiprocessing", the work is split over',\
             multiprocessing.cpu_count(), 'cores.'
         print
