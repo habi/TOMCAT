@@ -210,7 +210,8 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
     #create temporary directory for reconstruction of rotation center
     tmp_dir = options.SinDir + '/' + str("%.03f" % RotationCenter[i]) + '/'
     if not os.path.exists(tmp_dir):
-        print 'TMP_DIR', tmp_dir
+        if options.Verbose:
+            print 'The temporary directory is:', tmp_dir
         os.makedirs(tmp_dir)
 
     #set output directory for gridrec
@@ -239,7 +240,7 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
 
     # Remove temporary directory
     if options.Verbose:
-        print 'Removing temporary directory: ', tmp_dir
+        print 'Removing temporary directory:', tmp_dir
     os.removedirs(tmp_dir)
 
 # Assemble Directory- and Samplenames and prepare all other parameters
@@ -408,17 +409,21 @@ if options.Test:
         'reconstructions here, but I am only testing...'
 else:
     if options.Multiprocess:
-        print 'Using "multiprocessing". Unfortunately this means that the',\
-            'logging to the console is messed up, because we are working',\
-            'with several separate threads which all write to the same',\
-            'console output. But the work will be done at least 4x faster...'
         try:
-            from multiprocessing import Pool
+            import multiprocessing
         except:
             raise Exception('Can not import python module multiprocessing.',
                             'Additional modules have to be loaded! Run',
                             '"module load xbl/epd_free" on x02da-cons-2.')
-        pool = Pool()
+        print 'Using "multiprocessing", the work is split over',\
+            multiprocessing.cpu_count(), 'cores.'
+        print
+        if options.Verbose:
+            print
+            print 'Logging to the console will be a mess, since we are using',\
+                multiprocessing.cpu_count(), 'independent processes.'
+            time.sleep(5)
+        pool = multiprocessing.Pool()
 
         for i in range(len(RotationCenter)):
             pool.apply_async(worker, (i,
