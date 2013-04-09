@@ -45,6 +45,10 @@ differently reconstructed slices in a stack.
 # Update 19.11.2012: Now reads RotationCenter from Logfile (if the user did
 # not specify a value). If no value is found, RotationCenter is set to 1024.
 
+# Update 9.4.2013: Martin Nyvlt suggested and programmed a multiprocessor mode,
+# where the work is split over the available processor cores. Merging in his
+# changes.
+
 import sys
 import os
 import glob
@@ -87,7 +91,9 @@ parser.add_option('-i', '--iteration', dest='Iteration',
                   type='float',
                   help='Use this value as iteration step, (Default=0.5)',
                   metavar=0.5)
-parser.add_option('-z', dest='ZeroPadding', default=0.5, type='float',
+parser.add_option('-z', dest='ZeroPadding',
+                  default=0.5,
+                  type='float',
                   help='ZeroPadding, (Default=0.5)',
                   metavar=0.5)
 parser.add_option('-f', '--filter', dest='Filter',
@@ -97,6 +103,13 @@ parser.add_option('-f', '--filter', dest='Filter',
                   '(default), hann, hamm or hamming, ramp or ramlak, none, '
                   'parz or parzen, lanc or dpc.',
                   metavar='parzen')
+parser.add_option('-m', '--multiprocess', dest='Multiprocess',
+                  default=0,
+                  action='store_true',
+                  help='Use multiple cores. To make this work, you have to '
+                  'load additional modules! Use "module load xbl/epd_free" in '
+                  'the terminal on 02da-cons-2',
+                  metavar=1)
 parser.add_option('-v', '--verbose', dest='Verbose',
                   default=0,
                   action='store_true',
@@ -162,6 +175,72 @@ def query_yes_no(question, default="yes"):
         else:
             sys.stdout.write("Please respond with 'yes' or 'no' (or 'y'",
                              " or 'n').\n")
+
+
+def worker(i, RotationCenter, options, SampleName, Sinogram):
+    '''
+    Makes all the actual work ;).
+    1/ Creates temporary directory,
+    2/ Generates slice into tmp directory (gridrect reconstruction)
+    3/ Moves-renames the slice from tmp directory
+    4/ Deletes tmp directory
+
+    Example of the generated command used for gridrec:
+    ---
+    gridrec_64 -c 1302.39 -D ./Data10/disk5/PBT180s20xD_3_/sin/
+    PBT180s20xD_3_0901.sin.DMP -Z 0.5
+    -O /sls/X02DA/data/e13869/Data10/disk5/PBT180s20xD_3_/sin/1302.390/
+    ---
+    '''
+
+    # Reconstruct with gridrec
+    print '|' + (i+1)*'=' + (len(RotationCenter)-(i+1))*'-' + '| ' +\
+        "%02d" % (i+1) + '/' + "%02d" % len(RotationCenter) + ', ' +\
+        SampleName + str(Sinogram) + '.sin.DMP, ' + str(RotationCenter[i])
+    # Call either 64bit or 32bit gridrec
+    # platform.architecture[0] gives out '32bit' or '64bit', with [:-3] we
+    # remove the 'bit' and afterwards add the other paramteres to the command
+    reccommand = 'gridrec_' + platform.architecture()[0][:-3] + ' -c ' +\
+        str(RotationCenter[i]) + ' -D ' + options.SinDir + '/ ' + SampleName +\
+        str(Sinogram) + '.sin.DMP' + ' -Z ' + str(options.ZeroPadding)
+    if options.Filter:
+        # Add filter to the end of the command (if the user specified one)
+        reccommand += ' -f ' + options.Filter
+
+    #create temporary directory for reconstruction of rotation center
+    tmp_dir = options.SinDir + '/' + str("%.03f" % RotationCenter[i]) + '/'
+    if not os.path.exists(tmp_dir):
+        print 'TMP_DIR', tmp_dir
+        os.makedirs(tmp_dir)
+
+    #set output directory for gridrec
+    reccommand += ' -O ' + os.path.abspath(tmp_dir) + '/'
+
+    if options.Verbose:
+        print 'Reconstructing RotationCenter ' + str(RotationCenter[i]) +\
+            ' with the command'
+        print reccommand
+        os.system(reccommand)
+    else:
+        os.system(reccommand + '> /dev/null')
+
+    # Rename the reconstructed file to 'filename.rotationcenter.rec.dmp'
+    renamecommand = 'mv ' + os.path.abspath(tmp_dir) + '/' + SampleName +\
+        str(Sinogram) + '.rec.DMP ' + os.path.abspath(options.SinDir) + '/' +\
+        SampleName + str(Sinogram) + '.' + str("%.03f" % RotationCenter[i]) +\
+        '.rec.DMP'
+    if options.Verbose:
+        print 80 * '_'
+        print
+        print 'renaming reconstructed file so we can differentiate between',\
+            'Rotationcenters'
+        print renamecommand
+    os.system(renamecommand)
+
+    # Remove temporary directory
+    if options.Verbose:
+        print 'Removing temporary directory: ', tmp_dir
+    os.removedirs(tmp_dir)
 
 # Assemble Directory- and Samplenames and prepare all other parameters
 ## test if the directory exists, if not, tell the user
@@ -328,42 +407,31 @@ if options.Test:
     print 'I would actually calculate', len(RotationCenter),\
         'reconstructions here, but I am only testing...'
 else:
-    for i in range(len(RotationCenter)):
-        # Reconstruct with gridrec
-        print '|' + (i+1)*'=' + (len(RotationCenter)-(i+1))*'-' + '| ' +\
-            "%02d" % (i+1) + '/' + "%02d" % len(RotationCenter) + ', ' +\
-            SampleName + str(Sinogram) + '.sin.DMP, ' + str(RotationCenter[i])
-        """
-        Call either 64bit or 32bit gridrec; 'platform.architecture[0]' gives
-        you either '32bit' or '64bit', with [:-3] we remove the trailing 'bit'.
-        Afterwards we add the other paramteres to the reccommand
-        """
-        reccommand = 'gridrec_' + platform.architecture()[0][:-3] +\
-            ' -c ' + str(RotationCenter[i]) + ' ' + options.SinDir + '/' +\
-            SampleName + str(Sinogram) + '.sin.DMP' + ' -Z ' +\
-            str(options.ZeroPadding)
-        if options.Filter:
-            # Add filter to the end of the command (if the user specified one)
-            reccommand += ' -f ' + options.Filter
-        if options.Verbose:
-            print 'Reconstructing RotationCenter ' + str(RotationCenter[i]) +\
-                ' with the command'
-            print reccommand
-            os.system(reccommand)
-        else:
-            os.system(reccommand + '> /dev/null')
-        # Rename the reconstructed file to 'filename.rotationcenter.rec.dmp'
-        renamecommand = 'mv ' + os.path.abspath(options.SinDir) + '/' +\
-            SampleName + str(Sinogram) + '.rec.DMP ' +\
-            os.path.abspath(options.SinDir) + '/' + SampleName +\
-            str(Sinogram) + '.' + str("%.03f" % RotationCenter[i]) + '.rec.DMP'
-        if options.Verbose:
-            print 80 * '_'
-            print
-            print 'renaming reconstructed file so we can differentiate',\
-                'between Rotationcenters'
-            print renamecommand
-        os.system(renamecommand)
+    if options.Multiprocess:
+        print 'Using "multiprocessing". Unfortunately this means that the',\
+            'logging to the console is messed up, because we are working',\
+            'with several separate threads which all write to the same',\
+            'console output. But the work will be done at least 4x faster...'
+        try:
+            from multiprocessing import Pool
+        except:
+            raise Exception('Can not import python module multiprocessing.',
+                            'Additional modules have to be loaded! Run',
+                            '"module load xbl/epd_free" on x02da-cons-2.')
+        pool = Pool()
+
+        for i in range(len(RotationCenter)):
+            pool.apply_async(worker, (i,
+                                      RotationCenter,
+                                      options,
+                                      SampleName,
+                                      Sinogram))
+
+        pool.close()
+        pool.join()
+    else:
+        for i in range(len(RotationCenter)):
+            worker(i, RotationCenter, options, SampleName, Sinogram)
 
 # Display Calculated Sinograms for the User
 if options.Test:
