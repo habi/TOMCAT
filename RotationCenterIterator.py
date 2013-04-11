@@ -461,7 +461,7 @@ else:
     print
     print 'Starting Fiji with all the reconstructed files with the command'
     print
-    print viewcommand
+    print '\033[1m' + viewcommand + '\033[0;0m'
     print
     print 'Since the files have been renamed, you should be able browse',\
         'through the stack and thus find the best Rotationcenter!'
