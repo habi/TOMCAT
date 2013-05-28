@@ -103,8 +103,8 @@ parser.add_option('-f', '--filter', dest='Filter',
                   '(default), hann, hamm or hamming, ramp or ramlak, none, '
                   'parz or parzen, lanc or dpc.',
                   metavar='parzen')
-parser.add_option('-m', '--multiprocess', dest='Multiprocess',
-                  default=0,
+parser.add_option('-m', '--multicore', dest='Multicore',
+                  default=1,
                   action='store_true',
                   help='Use multiple cores. To make this work, you have to '
                   'load additional modules! Use "module load xbl/epd_free" in '
@@ -182,7 +182,7 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
     '''
     Makes all the actual work ;).
     1/ Creates temporary directory,
-    2/ Generates slice into tmp directory (gridrect reconstruction)
+    2/ Generates slice into tmp directory (gridrec reconstruction)
     3/ Moves-renames the slice from tmp directory
     4/ Deletes tmp directory
 
@@ -409,7 +409,7 @@ if options.Test:
     print 'I would actually calculate', len(RotationCenter),\
         'reconstructions here, but I am only testing...'
 else:
-    if options.Multiprocess:
+    if options.Multicore:
         try:
             import multiprocessing
         except:
@@ -426,16 +426,13 @@ else:
         print
         if options.Verbose:
             print
-            print 'Logging to the console will be a mess, since we are using',\
+            print 'Logging to the console will be messy, since we are using',\
                 multiprocessing.cpu_count(), 'independent processes.'
             time.sleep(5)
         pool = multiprocessing.Pool()
 
         for i in range(len(RotationCenter)):
-            pool.apply_async(worker, (i,
-                                      RotationCenter,
-                                      options,
-                                      SampleName,
+            pool.apply_async(worker, (i, RotationCenter, options, SampleName,
                                       Sinogram))
 
         pool.close()
