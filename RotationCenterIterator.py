@@ -7,48 +7,6 @@ renames the reconstructed slices and calls fiji so one can look at the
 differently reconstructed slices in a stack.
 '''
 
-# Update: 10.01.2012: Fiji is only started in the end, so we don't
-# interrupt the workflow. Additionally, at the start of the script we
-# delete all *.rec.DMPs in the sinogram directory. And using 'optparse'
-# we provide some options, help and sensible defaults to the user.
-
-# Update 16.4.2012: Now needs to be called with sin-directory, but also
-# allows for uncommon naming of those. Additionally test if we have three-
-# or four-digit numbers of Sinograms (both by suggestion of Jacky Sun).
-
-# Update 21.5.2012: Now cleanly reads the Sample- and Sin-Dir with os.abspath
-# calls. Additionally one can now specify a filter to pass through to
-# gridrec, by suggestion from Peter Modregger.
-
-# Update 23.5.2012: Calls gridrec_32 or gridrec_64, depending on architecture.
-# Also doesn't call 'gridrec_zp' anymore, since this was an old version.
-# Both suggested by Peter M.
-
-# Update 11.6.2012: Now directly opens the reconstructed Sinograms as a stack.
-# Since I couldn't figure out how to do it directly, I'm just calling a
-# a "macro" at the commandline-call of Fiji to open as Image Sequence.
-
-# Update 11.9.2012: corrected typo in the help, now reliably deletes *.rec.DMPs
-# and writes out the sinograms with the necessary amount of trailing zeroes
-# so that the slices open correctly in fiji (before they were opened in the
-# wrong order if 0.25 was used as interval). Additionally also checks if
-# the sinogram in question really does exist.
-
-# Update 8.10.2012: Platform-check is done more pythony, some cosmetic
-# corrections and query the user if more than MaxReconstructions
-# reconstructions are requested if we should really do it
-
-# Update 5.11.2012: Jacky found out that the (undocumente) parzen filter
-# of gridrec is not supported. Now it is. This made Fede document all filters
-# in Gridrec.
-
-# Update 19.11.2012: Now reads RotationCenter from Logfile (if the user did
-# not specify a value). If no value is found, RotationCenter is set to 1024.
-
-# Update 9.4.2013: Martin Nyvlt suggested and programmed a multiprocessor mode,
-# where the work is split over the available processor cores. Merging in his
-# changes.
-
 import sys
 import os
 import glob
@@ -98,32 +56,43 @@ parser.add_option('-z', dest='ZeroPadding',
                   metavar=0.5)
 parser.add_option('-f', '--filter', dest='Filter',
                   type='str',
-                  help='Filter to use (passthrough to "gridrec"). Options are '
-                  'obviously the same as for gridrec: shlo or shepp '
+                  help='Filter to use (passing through to "gridrec"). Options '
+                  'are obviously the same as for gridrec: shlo or shepp '
                   '(default), hann, hamm or hamming, ramp or ramlak, none, '
                   'parz or parzen, lanc or dpc.',
                   metavar='parzen')
+parser.add_option('-g', '--geometry', dest='Geometry',
+                  type='int',
+                  help='Geometry to use (passing through to "gridrec"). '
+                  'Options are obviously the same as for gridrec: "0" '
+                  '(projections angles specified in a file named angles.txt), '
+                  '1 (homogeneous sampling between 0 and pi) and 2 '
+                  '(homogeneous sampling between 0 and 2pi). Default: 1',
+                  metavar='1')
 parser.add_option('-m', '--multicore', dest='Multicore',
-                  default=1,
+                  default=True,
                   action='store_true',
                   help='Use multiple cores. To make this work, you have to '
                   'load additional modules! Use "module load xbl/epd_free" in '
                   'the terminal to try to load those. They should be there '
                   'on "x02da-cons-2".',
                   metavar=1)
+parser.add_option('--singlecore', action='store_false', dest='Multicore',
+                  help='turns off multicore processing, everything will take '
+                  'much longer')
 parser.add_option('-v', '--verbose', dest='Verbose',
-                  default=0,
+                  default=False,
                   action='store_true',
                   help='Be really chatty, (Default of the script is silent)',
                   metavar=1)
 parser.add_option('-d', '--debug', dest='debug',
-                  default=0,
+                  default=False,
                   action='store_true',
                   help='Debug the script. This omits all error-checking and '
                   'does not exit the script on errors',
                   metavar=1)
 parser.add_option('-t', '--test', dest='Test',
-                  default=0,
+                  default=False,
                   action='store_true',
                   help='Only do a test-run to see the details, do not '
                   'actually reconstruct the slices)',
@@ -207,6 +176,9 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
     if options.Filter:
         # Add filter to the end of the command (if the user specified one)
         reccommand += ' -f ' + options.Filter
+    if options.Geometry:
+        # Add filter to the end of the command (if the user specified one)
+        reccommand += ' -g ' + str(options.Geometry)
 
     #create temporary directory for reconstruction of rotation center
     tmp_dir = options.SinDir + '/' + str("%.03f" % RotationCenter[i]) + '/'
@@ -413,20 +385,24 @@ else:
         try:
             import multiprocessing
         except:
-            print 'I can not import the python module multiprocessing.',\
-                'Additional modules have to be loaded! Run "module load',\
-                ' xbl/epd_free" to try to load them. Afterwards (if you are',\
-                'on x02da-cn*), you unfortunately need to call the script',\
-                'again with the absolute path and "python" before it. It',\
-                'should work if you call "python', ' '.join(sys.argv) + '"',\
-                '(with the absolute path of the RotationCenterIterator!)'
+            print 'I can not import the python module multiprocessing.'
+            print 'Additional modules have to be loaded! Run'
+            print '---'
+            print 'module load xbl/epd_free'
+            print '---'
+            print 'to try to load them. Afterwards (if you are on x02da-cn*)'
+            print 'you unfortunately need to call the script with the absolute'
+            print 'path and "python" before it. Try with'
+            print '---'
+            print 'python', ' '.join(sys.argv)
+            print '---'
             sys.exit(1)
-        print 'Using "multiprocessing", the work is split over',\
+        print 'Splitting the sinogram calculation over',\
             multiprocessing.cpu_count(), 'cores.'
         print
         if options.Verbose:
             print
-            print 'Logging to the console will be messy, since we are using',\
+            print 'Logging will be messy, since we are using',\
                 multiprocessing.cpu_count(), 'independent processes.'
             time.sleep(5)
         pool = multiprocessing.Pool()
@@ -438,6 +414,7 @@ else:
         pool.close()
         pool.join()
     else:
+        print 'Using a single core to calculate the sinograms'
         for i in range(len(RotationCenter)):
             worker(i, RotationCenter, options, SampleName, Sinogram)
 
