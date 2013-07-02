@@ -1,1 +1,5 @@
+.svn
 TOMCAT-*
+WideFieldScan*
+test*
+libtiff.py
