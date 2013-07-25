@@ -47,7 +47,7 @@ print 'We are looking for sample "' + options.Sample + '*" on x02da-cn-6.'
 print
 print 'For this I will start to look for files on',\
     os.path.join(MountPoint, options.eAccount), '(and ask you for the',\
-    'password of the eAccout).'
+    'password of the eAccount).'
 
 
 # Generate command to list the files on the MountPoint on x02da-cn-6
@@ -62,12 +62,12 @@ print '---'
 print sshCommand
 print '---'
 
-process = subprocess.Popen(sshCommand, stdout=subprocess.PIPE, shell=True)
+sshProcess = subprocess.Popen(sshCommand, stdout=subprocess.PIPE, shell=True)
 SampleList = []
 # Save all found samples in a list, so we can use them lateron to present
 # to the user: http://stackoverflow.com/a/2813530/323100
 while True:
-    line = process.stdout.readline()
+    line = sshProcess.stdout.readline()
     if line.startswith(MountPoint):
         SampleList.append(line.rstrip())
     else:
@@ -109,12 +109,11 @@ print '---'
 print rsyncCommand
 print '---'
 print 'This will take a (long) while'
-process = subprocess.Popen(rsyncCommand, stdout=subprocess.PIPE, shell=True)
+subprocess.Popen(rsyncCommand, stdout=subprocess.PIPE, shell=True)
 
 print 80 * '_'
 
 print 'Now we can unpack', os.path.abspath(os.path.basename(SampleToGet)) +\
     '/tif.tar to ./' + os.path.basename(SampleToGet) + '/tif/*'
 os.chdir(os.path.abspath(os.path.basename(SampleToGet)))
-process = subprocess.Popen('tar -xvf tif.tar', stdout=subprocess.PIPE,
-                           shell=True)
+subprocess.Popen('tar -xvf tif.tar', stdout=subprocess.PIPE, shell=True)
