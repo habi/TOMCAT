@@ -24,6 +24,7 @@ parser.add_option('-w', '--width', dest='width', type='int',
 parser.add_option('-m', '--magnification', dest='magnification', type='int',
                   help='Magnification',
                   metavar='2')
+# read magnification from EPICS!
 parser.add_option('-p', '--pixelsize', dest='pixelsize', type='int',
                   help='Pixel size of the camera [um], defaults to 6.5',
                   metavar='6.5',
@@ -31,7 +32,7 @@ parser.add_option('-p', '--pixelsize', dest='pixelsize', type='int',
 (options, args) = parser.parse_args()
 
 # Show the help if necessary parameters are missing
-if options.left is None:
+if options.left is None or options.right is None or options.magnification is None:
     parser.print_help()
     print 'Example:'
     print 'The command below shows calculates the pos where you have to move'
@@ -43,7 +44,9 @@ if options.left is None:
 # Go!
 print 80 * '_'
 
-moveto = ( ( options.left + options.right ) / 2 - options.width / 2 ) * (options.pixelsize / options.magnification)
-print 'You should move the axis', moveto, 'um'
+MissedBy = ((options.left + options.right) / 2 - options.width / 2)
+print 'You missed the center by', MissedBy, 'pixels'
+MoveTo = MissedBy * (options.pixelsize / options.magnification)
+print 'You should move the axis', MoveTo, 'um'
 
 print 80 * '_'
