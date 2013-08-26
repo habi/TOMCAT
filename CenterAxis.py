@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 '''
 Script to calculate the center for the rotation axis.
@@ -18,49 +19,30 @@ from CaChannel import CaChannelException
 
 # Setup the different options to run the script
 parser = OptionParser()
-usage = "usage: %prog [options] arg"
+usage = 'usage: %prog [options] arg'
 parser.add_option('-l', '--left', dest='left', type='int',
-                  help='position of the feature on the left',
+                  help='position of the feature on the left, at 0',
                   metavar='58')
 parser.add_option('-r', '--right', dest='right', type='int',
-                  help='position of the feature on the right',
+                  help='position of the feature on the right, at 180',
                   metavar='1748')
-parser.add_option('-w', '--width', dest='width', type='int',
-                  help='Camera window width, defaults to 2560.',
-                  default=2560,
-                  metavar='1920')
-parser.add_option('-m', '--magnification', dest='magnification', type='int',
-                  help='Magnification',
-                  metavar='2')
-# read magnification from EPICS!
-parser.add_option('-p', '--pixelsize', dest='pixelsize', type='float',
-                  help='Pixel size of the camera [um], defaults to 6.5',
-                  metavar='6.5',
-                  default=6.5)
+parser.add_option('-t', '--test', dest='test',
+                  default=True,
+                  action='store_true',
+                  help='Only testing (default, since we are otherwise moving '
+                  'the sample stage).')
+parser.add_option('-g', '--go', dest='test',
+                  action='store_false',
+                  help='Move the stage!')
+
 (options, args) = parser.parse_args()
 
 # Show the help if necessary parameters are missing
-if (options.left is None or options.right is None or
-    options.magnification is None):
+if options.left is None or options.right is None:
     parser.print_help()
-    print 'Example:'
-    print 'The command below calculates the position to where you have to',\
-        'move the stage if you are using the full width pco.edge (' +\
-        str(options.width), 'px) at a 10-fold magnification.'
-    print ''
-    print sys.argv[0], '-l 123 -r 456 -m 10'
-    print ''
-    if options.left is None or options.right is None:
-        print 10 * ' ' + 40 * '_'
-        print 'You need to specify the left and right position with the "-l"',\
-            ' & "-r" parameter.'
-        print 'Call', ' '.join(sys.argv), '-l left -r right'
-        print 10 * ' ' + 40 * '_'
-    if options.magnification is None:
-        print 10 * ' ' + 40 * '_'
-        print 'You need to specify the magnification with the "-m" parameter.'
-        print 'Call', ' '.join(sys.argv), '-m Magnification'
-        print 10 * ' ' + 40 * '_'
+    print 'You need to specify the left and right position with the "-l"',\
+        ' & "-r" parameter.'
+    print 'Call', ' '.join(sys.argv), '-l left -r right'
     sys.exit(1)
 
 
@@ -82,14 +64,8 @@ class EpicsChannel:
                 val = self.chan.getw()
         except:
                 self.connected = 0
-                val = ""
+                val = ''
         return val
-
-    def getValCHK(self, connected):
-        if connected == 1:
-            return self.getVal()
-        else:
-            self.reconnect()
 
     def putVal(self, val):
         try:
@@ -97,37 +73,54 @@ class EpicsChannel:
         except:
             self.connected = 0
 
-    def putValCHK(self, val, connected):
-        if connected == 1:
-            self.putVal(val)
-        else:
-            self.reconnect()
-
-    def reconnect(self):
-        try:
-            self.chan = CaChannel()
-            self.chan.search(self.pvName)
-            self.chan.pend_io()
-            self.connected = 1
-        except CaChannelException, status:
-            print ca.message(status)
-            self.connected = 0
-
 # Define relevant EPICS channels
-EPICS_Stage = EpicsChannel("X02DA-SCAN-CAM1:FILPRE")
+## Initialize the channels
+EPICS_Sample_Stage_X = EpicsChannel('X02DA-ES1-SMP1:TRX.VAL')
+EPICS_PixelSize = EpicsChannel('X02DA-ES1-CAM1:PIXL_SIZE')
+EPICS_NbrOfPixels = EpicsChannel('X02DA-ES1-CAM1:PIX_NBR_H')
+EPICS_Magnification = EpicsChannel('X02DA-ES1-MS:MAGNF')
+EPICS_ActualPixelSize = EpicsChannel('X02DA-ES1-CAM1:ACT_PIXL_SIZE')
+EPICS_ZeroPositionToggle = EpicsChannel('X02DA-ES1-SMP1:TRX-SET0.PROC')
+## Get them values
+PixelSize = EpicsChannel.getVal(EPICS_PixelSize)
+WindowWidth = int(EpicsChannel.getVal(EPICS_NbrOfPixels))
+Magnification = int(EpicsChannel.getVal(EPICS_Magnification))
+ActualPixelSize = EpicsChannel.getVal(EPICS_ActualPixelSize)
+SampleStagePosition = EpicsChannel.getVal(EPICS_Sample_Stage_X)
 
 # Go!
 print 80 * '_'
 print 'I am calculating with'
-print '    - a left position of', options.left, 'px [-l]'
-print '    - a right position of', options.right, 'px [-r]'
-print '    - a camera width of', options.width, 'px [-w]'
-print '    - a camera pixel size of', options.pixelsize, 'um [-p] and'
-print '    - a', options.magnification, 'fold magnification [-m].'
+print '    - a left (0°) position of', options.left, 'px [-l]'
+print '    - a right (180°) position of', options.right, 'px [-r]'
+print '    - a camera width of', WindowWidth, 'px'
+print '    - a camera pixel size of', PixelSize, 'um and'
+print '    - a', str(Magnification) + '-fold magnification.'
+print
+print 'If those values are not correct, then make sure the correct values',\
+    'are entered'
+print 'in the "Camera Parameter" window (In the Expert Menu under End',\
+    'Station 1).'
 
-MissedBy = ((options.left + options.right) / 2 - options.width / 2)
-print 'You missed the center by', MissedBy, 'pixels'
-MoveTo = MissedBy * (options.pixelsize / options.magnification)
-print 'You should move the stage center by', MoveTo, 'um'
+print 80 * '_'
 
+MissedBy = ((options.left + options.right) / 2 - WindowWidth / 2)
+MoveBy = MissedBy * (PixelSize / Magnification)
+print 'You missed the center by', abs(MissedBy), 'pixels or', abs(MoveBy), 'um'
+print
+NewPosition = SampleStagePosition + MoveBy
+if options.test:
+    print 'I would now move the sample stage from', SampleStagePosition, 'um'\
+        'to', NewPosition, 'um'
+else:
+    print 'I will now move the sample stage from', SampleStagePosition, 'um'\
+        'to', NewPosition, 'um'
+    #~ EpicsChannel.putval(NewPosition, EPICS_Sample_Stage_X)
+    print 'I will now set this position as the new zero position.'
+    print 'Not implemented yet, since we need to know how to toggle the zero',\
+        'position'
+    # EpicsChannel.putval(EPICS_ZeroPositionToggle)
+    # NOT IMPLEMENTED YET,  WE NEED TO FIND OUT HOW TO TOGGLE IT
+    # use "camon X02DA-ES1-SMP1:TRX-SET0.PROC" to see how it's chaning during
+    # toggle
 print 80 * '_'
