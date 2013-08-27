@@ -9,13 +9,6 @@ Should evolve in an automated centering script.
 # Import necessary modules
 import sys
 from optparse import OptionParser
-try:
-    from CaChannel import *
-except:
-    print 'I was not able to import the CaChannel module which we need for',\
-        'EPICS connection. Exiting.'
-    sys.exit(1)
-from CaChannel import CaChannelException
 
 # Setup the different options to run the script
 parser = OptionParser()
@@ -76,6 +69,19 @@ if options.left is None or options.right is None:
     else:
         print 'Call', ' '.join(sys.argv), '-l left'
     sys.exit(1)
+
+if not options.manual:
+    # Import EPICS channel stuff after the options and help, so we can show
+    # those when not at the beamline...
+    try:
+        from CaChannel import *
+    except:
+        print 'I could not import the CaChannel module which we need for',\
+            'the EPICS connection.'
+        print 'Maybe try the -m option to specify the parameters manually...'
+        print 'Exiting.'
+        sys.exit(1)
+    from CaChannel import CaChannelException
 
 
 # Define EPICSChannel connection stuff (copied from stacked_scan.py)
@@ -143,19 +149,20 @@ else:
         sys.exit()
 
 # Give the camera ID a nice name
-if options.manual:
-    CameraName = 'manual settings'
-else:
-    CameraName = ['pco.2000', 'pco.Dimax', 'pco.edge', 'Photon Science',
-                  'manual settings'][Camera]
+# IDs 0-3 are our real cameras, ID 4 is used when the script runs in manual
+# mode. If we get more cameras at TOMCAT, just update this list according to
+# the drop down menu in the Camera Parameter window and update the selection of
+# the last name in manual mode to the correct ID (line 126 above).
+CameraName = ['pco.2000', 'pco.Dimax', 'pco.edge', 'Photon Science',
+              'manually set'][Camera]
 
 # Go!
 print 80 * '_'
 print 'I am calculating with'
 print '    - a left (0°) position of', options.left, 'px [-l]'
 print '    - a right (180°) position of', options.right, 'px [-r]'
-print '    - the', CameraName, 'with a window width of', options.windowwidth,\
-    'px'
+print '    - the', CameraName, 'camera with a window width of',\
+    options.windowwidth, 'px'
 print '    - a camera pixel size of', options.pixelsize, 'um and'
 print '    - a', str(options.magnification) + '-fold magnification,',\
     'resulting in an actual pixel size of', round(ActualPixelSize, 3), 'um.'
@@ -192,7 +199,7 @@ if options.test:
         print '---'
 else:
     if options.manual:
-        print 'I cannot move in manual mode'
+        print 'I cannot move in manual mode, the -g option is discarded...'
     else:
         print 'I will now move the sample stage from',\
             options.samplestageposition, 'um to', round(NewPosition, 3), 'um'
