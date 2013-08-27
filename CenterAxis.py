@@ -41,8 +41,9 @@ parser.add_option('-x', '--magnification', dest='magnification', type='int',
                   'mode (-m)')
 parser.add_option('-s', '--samplestageposition', dest='samplestageposition',
                   type='float', default=0, metavar=1234,
-                  help='Sample stage position. Defaults to 0. Only needed in '
-                  ' manual mode (-m)')
+                  help='Sample stage position. Defaults to 0. Only needed if '
+                  'you are bothered that the stage has position 0 in manual '
+                  'mode (-m)')
 parser.add_option('-t', '--test', dest='test',
                   default=True,
                   action='store_true',
@@ -58,7 +59,7 @@ parser.add_option('-g', '--go', dest='test',
 if options.left is None and options.right is None:
     parser.print_help()
     print
-    print 'A default call would be', ' '.join(sys.argv), '-l left -r right'
+    print 'A default call would be:', ' '.join(sys.argv), '-l left -r right'
     sys.exit(1)
 if options.left is None or options.right is None:
     print
@@ -209,15 +210,15 @@ else:
             'and "zero position" the stage there.'
         EpicsChannel.putVal(EPICS_Sample_Stage_X, NewPosition)
         print 'I will now set this position as the new zero position.'
-    # We need to wait for the motor to be done moving, or else EPICS just
-    # refuses to zero the stage position. That took a while to debug :)
-    if MoveBy > 1000:
-        sleepytime = 10
-    else:
-        sleepytime = 5
-    print 'But first I wait', sleepytime, 'seconds for the motor to be done',\
-        ' moving.'
-    time.sleep(sleepytime)
-    EpicsChannel.putVal(EPICS_ZeroPositionToggle, 1)
+        # We need to wait for the motor to be done moving, or else EPICS just
+        # refuses to zero the stage position. That took a while to debug :)
+        if MoveBy > 1000:
+            sleepytime = 10
+        else:
+            sleepytime = 5
+        print 'But first I wait', sleepytime, 'seconds for the motor to be',\
+            ' done moving.'
+        time.sleep(sleepytime)
+        EpicsChannel.putVal(EPICS_ZeroPositionToggle, 1)
 
 print 80 * '_'
