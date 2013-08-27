@@ -9,6 +9,7 @@ Should evolve in an automated centering script.
 # Import necessary modules
 import sys
 from optparse import OptionParser
+import time
 
 # Setup the different options to run the script
 parser = OptionParser()
@@ -148,7 +149,7 @@ else:
             ' that first...'
         sys.exit()
 
-# Give the camera ID a nice name
+# Map the camera ID we get from EPICS to a human readable name.
 # IDs 0-3 are our real cameras, ID 4 is used when the script runs in manual
 # mode. If we get more cameras at TOMCAT, just update this list according to
 # the drop down menu in the Camera Parameter window and update the selection of
@@ -158,6 +159,8 @@ CameraName = ['pco.2000', 'pco.Dimax', 'pco.edge', 'Photon Science',
 
 # Go!
 print 80 * '_'
+print "Hey Ho, Let's Go! -> http://youtu.be/c1BOsShTyng"
+print
 print 'I am calculating with'
 print '    - a left (0°) position of', options.left, 'px [-l]'
 print '    - a right (180°) position of', options.right, 'px [-r]'
@@ -173,9 +176,8 @@ if options.manual:
         '"-x" and "-w" parameters to the command line call.'
 else:
     print 'If those values are not correct, then make sure the correct',\
-        'values are entered'
-    print 'in the "Camera Parameter" window (In the Expert Menu under End',\
-        'Station 1).'
+        'values are entered in the "Camera Parameter" window (In the',\
+        'Expert Menu under End Station 1).'
 
 print 80 * '_'
 
@@ -187,7 +189,8 @@ print
 NewPosition = options.samplestageposition + MoveBy
 if options.test:
     print 'I would now move the sample stage from', \
-        options.samplestageposition, 'um to', round(NewPosition, 3), 'um'
+        round(options.samplestageposition, 3), 'um to', round(NewPosition, 3),\
+        'um'
     if options.manual:
         print 'But I was running in manual mode, so please do it yourself!'
     else:
@@ -202,13 +205,19 @@ else:
         print 'I cannot move in manual mode, the -g option is discarded...'
     else:
         print 'I will now move the sample stage from',\
-            options.samplestageposition, 'um to', round(NewPosition, 3), 'um'
-        #~ EpicsChannel.putval(NewPosition, EPICS_Sample_Stage_X)
+            options.samplestageposition, 'um to', round(NewPosition, 3), 'um',\
+            'and "zero position" the stage there.'
+        EpicsChannel.putVal(EPICS_Sample_Stage_X, NewPosition)
         print 'I will now set this position as the new zero position.'
-        print 'Not implemented yet, since we need to know how to toggle the',\
-            'zero position.'
-        # probably EpicsChannel.putval(1,EPICS_ZeroPositionToggle)
-        # NOT IMPLEMENTED YET,  WE NEED TO FIND OUT HOW TO TOGGLE IT
-        # use "camon X02DA-ES1-SMP1:TRX-SET0.PROC" to see how it's chaning during
-        # toggle
+    # We need to wait for the motor to be done moving, or else EPICS just
+    # refuses to zero the stage position. That took a while to debug :)
+    if MoveBy > 1000:
+        sleepytime = 10
+    else:
+        sleepytime = 5
+    print 'But first I wait', sleepytime, 'seconds for the motor to be done',\
+        ' moving.'
+    time.sleep(sleepytime)
+    EpicsChannel.putVal(EPICS_ZeroPositionToggle, 1)
+
 print 80 * '_'
