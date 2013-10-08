@@ -6,7 +6,7 @@ Very loosely based on Peter Modreggers 'pags' bash script
 
 Use
 rm /work/sls/bin/PaganinIterator.py
-cp /afs/psi.ch/user/h/haberthuer/Dev/PaganinIterator.py /work/sls/bin/
+cp /afs/psi.ch/user/h/haberthuer/Dev/Dev/PaganinIterator.py /work/sls/bin/
 chmod 0777 /work/sls/bin/PaganinIterator.py
 on SLSLc to move it to /work/sls/bin to make it available for all users.
 '''
@@ -15,6 +15,8 @@ on SLSLc to move it to /work/sls/bin to make it available for all users.
 # 2013-02-21: Cleanup
 # 2013-02-22: Jacky suggested to add the 'z'-Parameter to the output
 # 2013-02-25: Bernd suggested to add a check if commands are run successfully
+# 2013-10-08: Made script less chatty (in general), more informative where
+#             necessary and cleaned it up in general.
 
 import sys
 import os
@@ -52,7 +54,7 @@ parser.add_option('-c', '--center', dest='RotationCenter', type='float',
                   metavar='1283.25')
 parser.add_option('-v', '--verbose', dest='Verbose', default=0,
                   action='store_true',
-                  help='Be really chatty, (Default of the script is silent)',
+                  help='Be really chatty, (Default: Not really chatty)',
                   metavar=1)
 parser.add_option('-t', '--test', dest='Test', default=0, action='store_true',
                   help='Only do a test-run to see the details, do not'
@@ -116,7 +118,7 @@ if options.RotationCenter is None:
     LogFileLocation = os.path.join(options.SampleFolder, 'tif',
                                    SampleName + '.log')
     if options.Verbose:
-        print 'Trying to get RotationCenter from', LogFileLocation
+        print 'Getting RotationCenter from', LogFileLocation
     LogFile = open(LogFileLocation, 'r')
     # Go through all the lines in the logfile
     for line in LogFile:
@@ -130,8 +132,8 @@ if options.RotationCenter is None:
         if len(currentline) > 0:
             if (currentline[0] == 'Rotation' and currentline[1] == 'center'):
                 options.RotationCenter = float(line.split(':')[1].strip())
-    if options.Verbose:
-        print 'Rotation center set to', options.RotationCenter
+    print LogFileLocation, 'tells us that the rotation center is',\
+        options.RotationCenter
     if options.RotationCenter is None:
         options.RotationCenter = 1280
         if options.Verbose:
@@ -139,68 +141,142 @@ if options.RotationCenter is None:
                   options.RotationCenter
 
 if options.Test:
-    print 'I would do this if you remove the "-t" flag:'
+    print
+    print 12* ' ', 'I would do this if you remove the "-t" flag:'
+    print
 
 for i in range(-options.Range, options.Range+1):
     Delta = float(str('%e' % options.Delta)[:-2] +
                   str(int(str('%e' % options.Delta)[-2:]) + i))
+    print 'Retrieving phase for delta =', str(Delta) + ', beta =',\
+        options.Beta, 'and sample-detector distance =', options.Distance, 'mm'
     # Construct Paganin-call
     SinogramCommand = ' '.join(['sinooff_tomcat_paganin.py',
-                                os.path.abspath(os.path.join(options.SampleFolder, 'tif')),
+                                os.path.abspath(os.path.join(options.SampleFolder,
+                                                             'tif')),
                                 str(Delta),
                                 str(options.Beta),
                                 str(options.Distance)])
+    if not options.Verbose:
+        SinogramCommand = SinogramCommand + ' > /dev/null'                                
     ReconstructionCommand = 'gridrec -f parzen -c ' + \
                             str(options.RotationCenter) + \
-                            ' -D ' + os.path.abspath(os.path.join(options.SampleFolder, 'sin')) + \
-                            ' -O ' + os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))
-    MoveSinogramsCommand = ' '.join(['mv',
-                                     os.path.abspath(os.path.join(options.SampleFolder, 'sin')),
-                                     os.path.abspath(os.path.join(options.SampleFolder, 'sin_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))])
-    MoveFilteredProjectionsCommand = ' '.join(['mv',
-                                               os.path.abspath(os.path.join(options.SampleFolder, 'fltp')),
-                                               os.path.abspath(os.path.join(options.SampleFolder, 'fltp_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))])
+                            ' -D ' + \
+                            os.path.abspath(os.path.join(options.SampleFolder,
+                                                         'sin')) + \
+                            ' -O ' + \
+                            os.path.abspath(os.path.join(options.SampleFolder,
+                                                         'rec_' + str(Delta) +
+                                                         '_' +
+                                                         str(options.Beta) +
+                                                         '_' +
+                                                         str(options.Distance)))
+    if not options.Verbose:
+        ReconstructionCommand = ReconstructionCommand + ' > /dev/null'
+    MoveSINCommand = ' '.join(['mv',
+                               os.path.abspath(os.path.join(options.SampleFolder,
+                                                            'sin')),
+                               os.path.abspath(os.path.join(options.SampleFolder,
+                                                            'sin_' +
+                                                            str(Delta) +
+                                                            '_' +
+                                                            str(options.Beta) +
+                                                            '_' +
+                                                            str(options.Distance)))])
+    MoveFLTPCommand = ' '.join(['mv',
+                                os.path.abspath(os.path.join(options.SampleFolder,
+                                                             'fltp')),
+                                os.path.abspath(os.path.join(options.SampleFolder,
+                                                             'fltp_' +
+                                                             str(Delta) +
+                                                             '_' +
+                                                             str(options.Beta) +
+                                                             '_' +
+                                                             str(options.Distance)))])
     if options.Test:
+        print 'with the following sequence of commands:'
         print 3 * ' ', SinogramCommand
-        print 3 * ' ', 'mkdir', os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))
+        print 3 * ' ', 'mkdir',\
+            os.path.abspath(os.path.join(options.SampleFolder, 'rec_' +
+                                         str(Delta) + '_' + str(options.Beta) +
+                                         '_' + str(options.Distance)))
         print 3 * ' ', ReconstructionCommand
-        print 3 * ' ', MoveSinogramsCommand
-        print 3 * ' ', MoveFilteredProjectionsCommand
+        print 3 * ' ', MoveSINCommand
+        print 3 * ' ', MoveFLTPCommand
         print 80 * '_'
     else:
         print 'Generating sinograms'
+        print 29 * ' ' + 'This will take a while!'
         if os.system(SinogramCommand) is not 0:
             print 'Could not generate sinograms, exiting'
+            print 'Maybe try to remove the folder',\
+                os.path.abspath(os.path.join(options.SampleFolder,'fltp')),\
+                'and retry.'
+            print 'Use "rm ',\
+                os.path.abspath(os.path.join(options.SampleFolder,'fltp')),\
+                    '-r" to delete said folder...'                
             sys.exit(1)
-        print 'Reconstructing sinograms into renamed folder'
+        print 'Generating Folder for reconstruction:',\
+            os.path.abspath(os.path.join(options.SampleFolder,
+                                         'rec_' + str(Delta) + '_' +
+                                         str(options.Beta) + '_' +
+                                         str(options.Distance)))
         try:
-            os.mkdir(os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance))))
+            os.mkdir(os.path.abspath(os.path.join(options.SampleFolder,
+                                                  'rec_' + str(Delta) + '_' +
+                                                  str(options.Beta) + '_' +
+                                                  str(options.Distance))))
         except:
             pass
+        print 'Reconstructing sinograms into folder mentioned above'
+        print
+        print 25 * ' ' + 'This will take a (long) while!'
         if os.system(ReconstructionCommand) is not 0:
             print 'Could not reconstruct sinograms, exiting'
             sys.exit(1)
-        print 'Renaming sinogram folder'
-        if os.system(MoveSinogramsCommand) is not 0:
+        print 'Renaming old sinogram folder'
+        if os.system(MoveSINCommand) is not 0:
             print 'Could not rename sinogram folder, exiting'
             sys.exit(1)
-        print 'Renaming filtered projections folder'
-        if os.system(MoveFilteredProjectionsCommand) is not 0:
+        print 'Renaming old filtered projections folder'
+        if os.system(MoveFLTPCommand) is not 0:
             print 'Could not rename filtered projections folder, exiting'
             sys.exit(1)
+        print 'Proceeding to next delta.'
 
 if options.Test:
-    print 'I was just testing'
+    print
+    print 31 * ' ', 'I was only testing'
+    print
+    print 'Use the following command to actually perform what you have asked',\
+        ' for:'
+    print sys.argv[0], '-D', options.SampleFolder, '-d', options.Delta, '-r',\
+        options.Range, '-b', options.Beta, '-z', options.Distance
+    print
 else:
     print 'You now have the sinogram directories'
     for i in range(-options.Range, options.Range+1):
-        Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
-        print '    *', os.path.abspath(os.path.join(options.SampleFolder, 'sin_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))
+        Delta = float(str('%e' % options.Delta)[:-2] +
+                          str(int(str('%e' % options.Delta)[-2:]) + i))
+        print '    *', os.path.abspath(os.path.join(options.SampleFolder,
+                                                    'sin_' + str(Delta) + '_' +
+                                                    str(options.Beta) + '_' +
+                                                    str(options.Distance)))
     print 'the filtered projection directories'
     for i in range(-options.Range, options.Range+1):
-        Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
-        print '    *', os.path.abspath(os.path.join(options.SampleFolder, 'fltp_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))
+        Delta = float(str('%e' % options.Delta)[:-2] +
+                          str(int(str('%e' % options.Delta)[-2:]) + i))
+        print '    *', os.path.abspath(os.path.join(options.SampleFolder,
+                                                    'fltp_' + str(Delta) +
+                                                    '_' + str(options.Beta) +
+                                                    '_' +
+                                                    str(options.Distance)))
     print 'and the reconstruction directories'
     for i in range(-options.Range, options.Range+1):
-        Delta = float(str('%e' % options.Delta)[:-2] + str(int(str('%e' % options.Delta)[-2:]) + i))
-        print '    *', os.path.abspath(os.path.join(options.SampleFolder, 'rec_' + str(Delta) + '_' + str(options.Beta) + '_' + str(options.Distance)))
+        Delta = float(str('%e' % options.Delta)[:-2] +
+                          str(int(str('%e' % options.Delta)[-2:]) + i))
+        print '    *', os.path.abspath(os.path.join(options.SampleFolder,
+                                                    'rec_' + str(Delta) +
+                                                    '_' + str(options.Beta) +
+                                                    '_' +
+                                                    str(options.Distance)))
