@@ -148,6 +148,7 @@ if options.Test:
 for i in range(-options.Range, options.Range+1):
     Delta = float(str('%e' % options.Delta)[:-2] +
                   str(int(str('%e' % options.Delta)[-2:]) + i))
+    print
     print 'Retrieving phase for delta =', str(Delta) + ', beta =',\
         options.Beta, 'and sample-detector distance =', options.Distance, 'mm'
     # Construct Paganin-call
@@ -160,7 +161,7 @@ for i in range(-options.Range, options.Range+1):
                                 str(options.Distance)])
     if not options.Verbose:
         SinogramCommand = SinogramCommand + ' > /dev/null'
-    ReconstructionCommand = 'gridrec -f parzen -c ' + \
+    ReconstructionCommand = 'gridrec -Z 0.5 -f parzen -c ' + \
                             str(options.RotationCenter) + \
                             ' -D ' + \
                             os.path.abspath(os.path.join(options.SampleFolder,
@@ -202,18 +203,21 @@ for i in range(-options.Range, options.Range+1):
         print 80 * '_'
     else:
         print 'Generating corrected projections, filtered projections and',\
-            ' sinograms'
-        print 'This will take a while, especially if we are doing it for the',\
-            'first run of the iteration process. Afterwards we can reuse the',\
-            'corrected projections.'
+            'sinograms'
+        print 'This will take quite a while!'
+        if options.Verbose:
+            print 'Especially if we are doing it for the first run of the',\
+                'iteration process. Afterwards we can reuse the corrected',\
+                'projections.'
         if os.system(SinogramCommand) is not 0:
             print 'Could not generate sinograms, exiting'
-            print 'Maybe try to remove the folder',\
-                os.path.abspath(os.path.join(options.SampleFolder, 'fltp')),\
-                'and retry.'
+            print
+            print 'Maybe try to remove the fltp and cpr folders and try again.'
             print 'Use "rm ',\
                 os.path.abspath(os.path.join(options.SampleFolder, 'fltp')),\
-                '-r" to delete said folder...'
+                '-r; rm ',\
+                os.path.abspath(os.path.join(options.SampleFolder, 'cpr')),\
+                '-r" to delete said folders...'
             sys.exit(1)
         print 'Generating Folder for reconstruction:',\
             os.path.abspath(os.path.join(options.SampleFolder,
@@ -279,3 +283,21 @@ else:
                                                     '_' + str(options.Beta) +
                                                     '_' +
                                                     str(options.Distance)))
+    print
+    print 'To look at a single slice of all the reconstructed values, you',\
+        'can use the command below.'
+    print 'This command opens up reconstruction 1001 from each different',\
+        'beta-value directory, enhances the contrast of this image and saves',\
+        'it to a tiff-file in the current directory. The only thing you have',\
+        'to do is to close fiji X times (x=amount of values you',\
+        'reconstructed).'
+    print '---'
+    print 'cd', os.path.abspath(options.SampleFolder)
+    print 'for i in `ls rec_*e-* -d`;'
+    print 'do echo looking at $i;'
+    print 'fiji $i/*1001* -eval "rename(\\\"${i}\\\");',\
+        'run(\\\"Enhance Contrast...\\\", \\\"saturated=0.4\\\");',\
+        'run(\\\"Save\\\", \\\"save=' +\
+        os.path.abspath(options.SampleFolder) + '\/${i}.tif\\\");";'
+    print 'done'
+    print '---'
