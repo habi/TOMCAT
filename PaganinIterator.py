@@ -147,7 +147,7 @@ for i in range(-options.Range, options.Range+1):
     for k in range(-options.Range, options.Range+1):
         Counter += 1
         Beta = float(str('%e' % options.Beta)[:-2] +
-                  str(int(str('%e' % options.Beta)[-2:]) + k))
+                     str(int(str('%e' % options.Beta)[-2:]) + k))
         print
         print 'Step', str(Counter) + ': Retrieving phase for delta =',\
             str(Delta) + ', beta =', Beta, 'and sample-detector distance =',\
@@ -213,12 +213,20 @@ for i in range(-options.Range, options.Range+1):
             if os.system(SinogramCommand) is not 0:
                 print 'Could not generate sinograms, exiting'
                 print
-                print 'Maybe try to remove the fltp and cpr folders and try again.'
+                print 'You should try to remove the fltp folder and try again.'
                 print 'Use "rm ',\
-                    os.path.abspath(os.path.join(options.SampleFolder, 'fltp')),\
-                    '-r; rm ',\
+                    os.path.abspath(os.path.join(options.SampleFolder,
+                                    'fltp')), '-r" to delete the stray fltp',\
+                    ' directory and try again.'
+                print
+                print 'If that does *not* work, you can also delete the cpr',\
+                    'folder with "; rm ',\
                     os.path.abspath(os.path.join(options.SampleFolder, 'cpr')),\
-                    '-r" to delete said folders...'
+                    '-r".'
+                print 'Maybe you should cancel some batches in the DicoClient.'
+                print '"cd /usr/local/cluster/DiCoClient"'
+                print '"java -jar DiCoClient.jar"'
+                print '"lj ex a" and "cb number" of the jobs belonging to you'
                 sys.exit(1)
             print 'Generating Folder for reconstruction:',\
                 os.path.abspath(os.path.join(options.SampleFolder,
@@ -227,8 +235,8 @@ for i in range(-options.Range, options.Range+1):
                                              str(options.Distance)))
             try:
                 os.mkdir(os.path.abspath(os.path.join(options.SampleFolder,
-                                                      'rec_' + str(Delta) + '_' +
-                                                      str(Beta) + '_' +
+                                                      'rec_' + str(Delta) +
+                                                      '_' + str(Beta) + '_' +
                                                       str(options.Distance))))
             except:
                 pass
@@ -252,56 +260,56 @@ if options.Test:
     print
     print 31 * ' ', 'I was only testing'
     print
-    print 'Use the following command to actually perform what you have asked',\
-        ' for:'
-    print sys.argv[0], '-D', options.SampleFolder, '-d', options.Delta, '-r',\
-        options.Range, '-b', options.Beta, '-z', options.Distance
+    print 'Remove the "-t" flag from your command to actually perform what',\
+        'you have asked for.'
     print
 else:
     print 'You now have the sinogram directories'
     for i in range(-options.Range, options.Range+1):
         Delta = float(str('%e' % options.Delta)[:-2] +
-                    str(int(str('%e' % options.Delta)[-2:]) + i))
+                      str(int(str('%e' % options.Delta)[-2:]) + i))
         for k in range(-options.Range, options.Range+1):
             Beta = float(str('%e' % options.Beta)[:-2] +
-                  str(int(str('%e' % options.Beta)[-2:]) + k))
+                         str(int(str('%e' % options.Beta)[-2:]) + k))
             print '    *', os.path.abspath(os.path.join(options.SampleFolder,
                                                         'sin_' + str(Delta) +
                                                         '_' +
                                                         str(options.Beta) +
-                                                         '_' +
+                                                        '_' +
                                                         str(options.Distance)))
     print 'the filtered projection directories'
     for i in range(-options.Range, options.Range+1):
         Delta = float(str('%e' % options.Delta)[:-2] +
-                  str(int(str('%e' % options.Delta)[-2:]) + i))
+                      str(int(str('%e' % options.Delta)[-2:]) + i))
         for k in range(-options.Range, options.Range+1):
             Beta = float(str('%e' % options.Beta)[:-2] +
-                  str(int(str('%e' % options.Beta)[-2:]) + k))
+                         str(int(str('%e' % options.Beta)[-2:]) + k))
             print '    *', os.path.abspath(os.path.join(options.SampleFolder,
-                                                    'fltp_' + str(Delta) +
-                                                    '_' + str(options.Beta) +
-                                                    '_' +
-                                                    str(options.Distance)))
+                                                        'fltp_' + str(Delta) +
+                                                        '_' +
+                                                        str(options.Beta) +
+                                                        '_' +
+                                                        str(options.Distance)))
     print 'and the reconstruction directories'
     for i in range(-options.Range, options.Range+1):
         Delta = float(str('%e' % options.Delta)[:-2] +
-            str(int(str('%e' % options.Delta)[-2:]) + i))
+                      str(int(str('%e' % options.Delta)[-2:]) + i))
         for k in range(-options.Range, options.Range+1):
             Beta = float(str('%e' % options.Beta)[:-2] +
-                  str(int(str('%e' % options.Beta)[-2:]) + k))
+                         str(int(str('%e' % options.Beta)[-2:]) + k))
             print '    *', os.path.abspath(os.path.join(options.SampleFolder,
-                                                    'rec_' + str(Delta) +
-                                                    '_' + str(options.Beta) +
-                                                    '_' +
-                                                    str(options.Distance)))
+                                                        'rec_' + str(Delta) +
+                                                        '_' +
+                                                        str(options.Beta) +
+                                                        '_' +
+                                                        str(options.Distance)))
     print
     print 'To look at a single slice of all the reconstructed values, you',\
         'can use the command below.'
     print 'This command opens up reconstruction 1001 from each different',\
         'beta-value directory, enhances the contrast of this image and saves',\
-        'it to a tiff-file in the current directory. The only thing you have',\
-        'to do is to close fiji X times (x=amount of values you',\
+        'it to a tiff- and jpf-file in the current directory. The only thing',\
+        'you have to do is to close fiji X times (x=amount of values you',\
         'reconstructed).'
     print '---'
     print 'cd', os.path.abspath(options.SampleFolder)
@@ -310,6 +318,8 @@ else:
     print 'fiji $i/*1001* -eval "rename(\\\"${i}\\\");',\
         'run(\\\"Enhance Contrast...\\\", \\\"saturated=0.4\\\");',\
         'run(\\\"Save\\\", \\\"save=' +\
-        os.path.abspath(options.SampleFolder) + '\/${i}.tif\\\");";'
+        os.path.abspath(options.SampleFolder) + '\/${i}.tif\\\");',\
+        'saveAs(\\\"Jpeg\\\", \\\"' +\
+        os.path.abspath(options.SampleFolder) + '\/${i}.jpg\\\");";'
     print 'done'
     print '---'
