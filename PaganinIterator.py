@@ -17,6 +17,7 @@ on SLSLc to move it to /work/sls/bin to make it available for all users.
 # 2013-02-25: Bernd suggested to add a check if commands are run successfully
 # 2013-10-08: Made script less chatty (in general), more informative where
 #             necessary and cleaned it up in general.
+# 2013-10-14: Iteration is now possible over delta and beta or only delta.
 
 import sys
 import os
@@ -31,7 +32,7 @@ os.system('clear')
 parser = OptionParser()
 usage = "usage: %prog [options] arg"
 parser.add_option('-D', '--Directory', dest='SampleFolder',
-                  help='Location of the Sample you want to reconstruct with '
+                  help='Folder of the Sample you want to reconstruct with the '
                        'different parameters',
                   metavar='path')
 parser.add_option('-d', '--Delta', dest='Delta',
@@ -45,20 +46,29 @@ parser.add_option('-z', dest='Distance', type='int',
                   help='Distance to the scintillator in mm',
                   metavar=33)
 parser.add_option('-r', '--range', dest='Range', type='int',
-                  help='Range of powers you want to iterate through',
+                  help='Orders of magnitude you want to iterate through. By '
+                       'default the script only iterates through delta. If '
+                       'you also want to iterate through beta, then add the '
+                       '-i parameter.',
                   metavar='3')
-parser.add_option('-c', '--center', dest='RotationCenter', type='float',
-                  help='RotationCenter for reconstructing the slices '
-                       '(Default=Read from logfile or set to 1280 if nothing '
-                       'found in logfile)',
-                  metavar='1283.25')
-parser.add_option('-v', '--verbose', dest='Verbose', default=0,
-                  action='store_true',
-                  help='Be really chatty, (Default: Not really chatty)',
+parser.add_option('-i', '--iteratebeta', dest='IterateBeta',
+                  default=False, action='store_true',
+                  help='Iterate over beta. Default: Do not iterate over beta',
                   metavar=1)
-parser.add_option('-t', '--test', dest='Test', default=0, action='store_true',
+parser.add_option('-c', '--center', dest='RotationCenter', type='float',
+                  help='RotationCenter for reconstructing the slices. '
+                       'Default: Read value from logfile, or set to 1280 if '
+                       'if nothing found in logfile.',
+                  metavar='1283.25')
+parser.add_option('-v', '--verbose', dest='Verbose',
+                  default=False, action='store_true',
+                  help='Be really chatty. Default: Tell us only the relevant '
+                       'stuff.',
+                  metavar=1)
+parser.add_option('-t', '--test', dest='Test',
+                  default=False, action='store_true',
                   help='Only do a test-run to see the details, do not'
-                       'actually reconstruct the slices)',
+                       'actually reconstruct the slices. Default: go for it!',
                   metavar=1)
 (options, args) = parser.parse_args()
 
@@ -66,8 +76,9 @@ parser.add_option('-t', '--test', dest='Test', default=0, action='store_true',
 if options.SampleFolder is None:
     parser.print_help()
     print 'Example:'
-    print ('The command below calculates the Paganin reconstuctions of '
-           'Sample A with Delta values varying from =3e-4 to 3e-10')
+    print 'The command below calculates the Paganin reconstuctions of Sample',\
+        'A with Delta values varying from 3e-4 to 3e-10, a sample-detector',\
+        'distance of 32 mm, while the beta value is kept at 3e-10.'
     print
     print sys.argv[0], ('-D /sls/X02DA/data/e12740/Data10/disk1/Sample_A_ '
                         '-d 3e-7 -r 3 -b 3e-10 -z 32')
@@ -140,76 +151,89 @@ if options.RotationCenter is None:
             print 'No Rotation center found in LogFile, setting it to', \
                   options.RotationCenter
 
+# Constructing list of deltas and betas so we can iterate through them below
+Delta = [options.Delta * 10 ** i for i in range(-options.Range,
+                                                options.Range+1)]
+# If the user wants to iterate through beta, make a list, otherwise just make a
+# one-element list
+if options.IterateBeta:
+    Beta = [options.Beta * 10 ** i for i in range(-options.Range,
+                                                  options.Range+1)]
+else:
+    Beta = []
+    Beta.append(options.Beta)
+
 Counter = 0
-for i in range(-options.Range, options.Range+1):
-    Delta = float(str('%e' % options.Delta)[:-2] +
-                  str(int(str('%e' % options.Delta)[-2:]) + i))
-    for k in range(-options.Range, options.Range+1):
+for i in range(len(Delta)):
+    for k in range(len(Beta)):
         Counter += 1
-        Beta = float(str('%e' % options.Beta)[:-2] +
-                     str(int(str('%e' % options.Beta)[-2:]) + k))
         print
         print 'Step', str(Counter) + ': Retrieving phase for delta =',\
-            str(Delta) + ', beta =', Beta, 'and sample-detector distance =',\
-            options.Distance, 'mm'
+            str(Delta[i]) + ', beta =', Beta[k], 'and sample-detector',\
+            'distance =', options.Distance, 'mm'
         # Construct Paganin-call
         SinogramCommand = ' '.join(['sinooff_tomcat_paganin.py',
                                     os.path.abspath(
                                         os.path.join(options.SampleFolder,
                                                      'tif')),
-                                    str(Delta),
-                                    str(Beta),
+                                    str(Delta[i]),
+                                    str(Beta[k]),
                                     str(options.Distance)])
         if not options.Verbose:
             SinogramCommand = SinogramCommand + ' > /dev/null'
         ReconstructionCommand = 'gridrec -Z 0.5 -f parzen -c ' + \
                                 str(options.RotationCenter) + \
                                 ' -D ' + \
-                                os.path.abspath(os.path.join(options.SampleFolder,
-                                                             'sin')) + \
+                                os.path.abspath(os.path.join(
+                                    options.SampleFolder, 'sin')) + \
                                 ' -O ' + \
                                 os.path.abspath(os.path.join(
                                                 options.SampleFolder, 'rec_' +
-                                                str(Delta) + '_' +
-                                                str(Beta) + '_' +
+                                                str(Delta[i]) + '_' +
+                                                str(Beta[k]) + '_' +
                                                 str(options.Distance)))
         if not options.Verbose:
             ReconstructionCommand = ReconstructionCommand + ' > /dev/null'
         MoveSINCommand = ' '.join(['mv',
                                    os.path.abspath(os.path.join(
-                                                   options.SampleFolder, 'sin')),
+                                                   options.SampleFolder,
+                                                   'sin')),
                                    os.path.abspath(os.path.join(
-                                                   options.SampleFolder, 'sin_' +
-                                                   str(Delta) + '_' +
-                                                   str(Beta) + '_' +
+                                                   options.SampleFolder,
+                                                   'sin_' +
+                                                   str(Delta[i]) + '_' +
+                                                   str(Beta[k]) + '_' +
                                                    str(options.Distance)))])
         MoveFLTPCommand = ' '.join(['mv',
                                     os.path.abspath(os.path.join(
-                                                    options.SampleFolder, 'fltp')),
+                                                    options.SampleFolder,
+                                                    'fltp')),
                                     os.path.abspath(os.path.join(
-                                                    options.SampleFolder, 'fltp_' +
-                                                    str(Delta) + '_' +
-                                                    str(Beta) + '_' +
+                                                    options.SampleFolder,
+                                                    'fltp_' +
+                                                    str(Delta[i]) + '_' +
+                                                    str(Beta[k]) + '_' +
                                                     str(options.Distance)))])
         if options.Test:
             print 'with the following sequence of commands:'
             print 3 * ' ', SinogramCommand
             print 3 * ' ', 'mkdir',\
                 os.path.abspath(os.path.join(options.SampleFolder, 'rec_' +
-                                             str(Delta) + '_' + str(Beta) +
-                                             '_' + str(options.Distance)))
+                                             str(Delta[i]) + '_' +
+                                             str(Beta[k]) + '_' +
+                                             str(options.Distance)))
             print 3 * ' ', ReconstructionCommand
             print 3 * ' ', MoveSINCommand
             print 3 * ' ', MoveFLTPCommand
             print 80 * '_'
         else:
-            print 'Generating corrected projections, filtered projections and',\
-                'sinograms'
+            print 'Generating corrected projections, filtered projections',\
+                ' and sinograms'
             print 'This will take quite a while!'
             if options.Verbose:
-                print 'Especially if we are doing it for the first run of the',\
-                    'iteration process. Afterwards we can reuse the corrected',\
-                    'projections.'
+                print 'Especially if we are doing it for the first run of',\
+                    'the iteration process. Afterwards we can reuse the',\
+                    'corrected projections.'
             if os.system(SinogramCommand) is not 0:
                 print 'Could not generate sinograms, exiting'
                 print
@@ -221,7 +245,8 @@ for i in range(-options.Range, options.Range+1):
                 print
                 print 'If that does *not* work, you can also delete the cpr',\
                     'folder with "; rm ',\
-                    os.path.abspath(os.path.join(options.SampleFolder, 'cpr')),\
+                    os.path.abspath(os.path.join(options.SampleFolder,
+                                                 'cpr')),\
                     '-r".'
                 print 'Maybe you should cancel some batches in the DicoClient.'
                 print '"cd /usr/local/cluster/DiCoClient"'
@@ -230,13 +255,14 @@ for i in range(-options.Range, options.Range+1):
                 sys.exit(1)
             print 'Generating Folder for reconstruction:',\
                 os.path.abspath(os.path.join(options.SampleFolder,
-                                             'rec_' + str(Delta) + '_' +
-                                             str(Beta) + '_' +
+                                             'rec_' + str(Delta[i]) + '_' +
+                                             str(Beta[k]) + '_' +
                                              str(options.Distance)))
             try:
                 os.mkdir(os.path.abspath(os.path.join(options.SampleFolder,
-                                                      'rec_' + str(Delta) +
-                                                      '_' + str(Beta) + '_' +
+                                                      'rec_' + str(Delta[i]) +
+                                                      '_' + str(Beta[k]) +
+                                                      '_' +
                                                       str(options.Distance))))
             except:
                 pass
@@ -254,8 +280,7 @@ for i in range(-options.Range, options.Range+1):
             if os.system(MoveFLTPCommand) is not 0:
                 print 'Could not rename filtered projections folder, exiting'
                 sys.exit(1)
-            print 'Proceeding to next beta.'
-        print 'Proceeding to next delta.'
+
 if options.Test:
     print
     print 31 * ' ', 'I was only testing'
@@ -265,43 +290,28 @@ if options.Test:
     print
 else:
     print 'You now have the sinogram directories'
-    for i in range(-options.Range, options.Range+1):
-        Delta = float(str('%e' % options.Delta)[:-2] +
-                      str(int(str('%e' % options.Delta)[-2:]) + i))
-        for k in range(-options.Range, options.Range+1):
-            Beta = float(str('%e' % options.Beta)[:-2] +
-                         str(int(str('%e' % options.Beta)[-2:]) + k))
+    for i in range(len(Delta)):
+        for k in range(len(Beta)):
             print '    *', os.path.abspath(os.path.join(options.SampleFolder,
-                                                        'sin_' + str(Delta) +
-                                                        '_' +
-                                                        str(options.Beta) +
-                                                        '_' +
+                                                        'sin_' +
+                                                        str(Delta[i]) + '_' +
+                                                        str(Beta[k]) + '_' +
                                                         str(options.Distance)))
     print 'the filtered projection directories'
-    for i in range(-options.Range, options.Range+1):
-        Delta = float(str('%e' % options.Delta)[:-2] +
-                      str(int(str('%e' % options.Delta)[-2:]) + i))
-        for k in range(-options.Range, options.Range+1):
-            Beta = float(str('%e' % options.Beta)[:-2] +
-                         str(int(str('%e' % options.Beta)[-2:]) + k))
+    for i in range(len(Delta)):
+        for k in range(len(Beta)):
             print '    *', os.path.abspath(os.path.join(options.SampleFolder,
-                                                        'fltp_' + str(Delta) +
-                                                        '_' +
-                                                        str(options.Beta) +
-                                                        '_' +
+                                                        'fltp_' +
+                                                        str(Delta[i]) + '_' +
+                                                        str(Beta[k]) + '_' +
                                                         str(options.Distance)))
     print 'and the reconstruction directories'
-    for i in range(-options.Range, options.Range+1):
-        Delta = float(str('%e' % options.Delta)[:-2] +
-                      str(int(str('%e' % options.Delta)[-2:]) + i))
-        for k in range(-options.Range, options.Range+1):
-            Beta = float(str('%e' % options.Beta)[:-2] +
-                         str(int(str('%e' % options.Beta)[-2:]) + k))
+    for i in range(len(Delta)):
+        for k in range(len(Beta)):
             print '    *', os.path.abspath(os.path.join(options.SampleFolder,
-                                                        'rec_' + str(Delta) +
-                                                        '_' +
-                                                        str(options.Beta) +
-                                                        '_' +
+                                                        'rec_' +
+                                                        str(Delta[i]) + '_' +
+                                                        str(Beta[k]) + '_' +
                                                         str(options.Distance)))
     print
     print 'To look at a single slice of all the reconstructed values, you',\
