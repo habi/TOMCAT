@@ -243,21 +243,28 @@ except:
 
 # Get RotationCenter from Logfile, or set it to 1024 if not found.
 if options.RotationCenter is None:
-    LogFileLocation = os.path.join(
-        os.path.split(
-            os.path.abspath(options.SinDir))[0], 'tif', SampleName + '.log')
     if options.Verbose:
         print 'Trying to get RotationCenter from', LogFileLocation
-    LogFile = open(LogFileLocation, 'r')
+    LogFileLocation = os.path.join(os.path.dirname(os.path.abspath(
+                                                   options.SinDir)),
+                                   'tif', SampleName + '.log')
+    try:
+        LogFile = open(LogFileLocation, 'r')
+    except:
+        print 'I cannot seem to find a log file!'
+        print 'You told me to look here:', os.path.abspath(options.SinDir)
+        print 'Maybe you only told me about the sample folder and forgot to',\
+            'include the sinogram folder. Care to try again?'
+        sys.exit(1)
     # Go through all the lines in the logfile
     for line in LogFile:
         # split each line at the spaces
         currentline = line.split()
         """
         If there's a line and the first and second word are "Rotation" and
-        "center", then get the value after the :, strip it from all spaces and
-        convert the string to a float. Then set this value to be the
-        Rotationcenter
+        "center", then get the value after the :, strip it from all spaces,
+        convert the string to a float and set this float to be the
+        Rotationcenter.
         """
         if len(currentline) > 0:
             if (currentline[0] == 'Rotation' and currentline[1] == 'center'):
