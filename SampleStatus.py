@@ -33,27 +33,28 @@ for cfile in allfiles:
    (cfold,csx)=remRecFunc(cfile)
    allsamples[cfold]=allsamples.get(cfold,[])+[csx]
 
+def getLogParameter(logLines,parmName,outName=None):
+   if outName is None: outName=parmName
+   try: # filter the log file looking for the specific parameter and take the last appearance
+      cParam=filter(lambda line: line.find(parmName)>=0,logLines)[-1].strip()
+      try:
+         return outName.join([x.strip() for x in cParam.split(parmName)])+' :'
+      except:
+         return ''  # Could not be split correctly
+   except:
+      return ''  # Parameter not found
 def getRot(foldName): # get the rotation center from the log file
    try:
       curLog=glob(foldName+'/tif/*.log')[0]
       f=open(curLog)
       allLogLines=f.readlines()
-      cCenter=filter(lambda line: line.find('Rotation center:')>=0,allLogLines)[-1].strip()
-      try:
-         estRotCent='EstRotCent'.join(cCenter.split('Rotation center'))+' :'
-         try:
-            realCenter=filter(lambda line: line.find('Center')>=0,allLogLines)[-1].strip()
-            realRotCent='RecRotCent:'.join([x.strip() for x in realCenter.split('Center')])+' :'
-            return ' '.join([estRotCent,realRotCent])
-         except:
-            return estRotCent
-      except:
-         # Center line not found (don't report is just means sinoff/sinfly has not been run yet
-         return ''
+      paramList=[('Rotation center:','EstRotCent:',{})] # Sinofly estimated rotation center
+      paramList+=[('Center','RecRotCent:',{})] # actual rotation center used in reconstruction
+      paramVals=map(lambda x: getLogParameter(allLogLines,x[0],x[1],*x[2]),paramList)
+      return ' '.join(filter(lambda x: len(x)>0,paramVals))
    except:
       errorMsg(foldName+' log not found!')
       return ''
-
 
 def fixFolderName(cFolder,cSuffix):
    newSuffix=folders.get(cSuffix,cSuffix)
