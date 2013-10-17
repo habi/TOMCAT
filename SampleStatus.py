@@ -12,7 +12,7 @@ from optparse import OptionParser
 from os import getlogin
 import os,sys
 globals()['errorLog']=[]
-def errorMsg(x): globals()['errorLog']+=[x]
+def errorMsg(x): globals()['errorLog']+=[x] # store errors and show them all at the end of the script
 
 args=OptionParser()
 args.add_option('-u','--user',dest='user',default=getlogin(),help='Username to search')
@@ -37,9 +37,16 @@ def getRot(foldName): # get the rotation center from the log file
    try:
       curLog=glob(foldName+'/tif/*.log')[0]
       f=open(curLog)
-      cCenter=filter(lambda line: line.find('Rotation center:')>=0,f.readlines())[-1].strip()
+      allLogLines=f.readlines()
+      cCenter=filter(lambda line: line.find('Rotation center:')>=0,allLogLines)[-1].strip()
       try:
-         return 'EstRotCent'.join(cCenter.split('Rotation center'))+' :'
+         estRotCent='EstRotCent'.join(cCenter.split('Rotation center'))+' :'
+         try:
+            realCenter=filter(lambda line: line.find('Center')>=0,allLogLines)[-1].strip()
+            realRotCent='RecRotCent:'.join([x.strip() for x in realCenter.split('Center')])+' :'
+            return ' '.join([estRotCent,realRotCent])
+         except:
+            return estRotCent
       except:
          # Center line not found (don't report is just means sinoff/sinfly has not been run yet
          return ''
