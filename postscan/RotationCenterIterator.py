@@ -170,9 +170,15 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
     # Call either 64bit or 32bit gridrec
     # platform.architecture[0] gives out '32bit' or '64bit', with [:-3] we
     # remove the 'bit' and afterwards add the other paramteres to the command
-    reccommand = 'gridrec_' + platform.architecture()[0][:-3] + ' -c ' +\
-        str(RotationCenter[i]) + ' -D ' + options.SinDir + '/ ' + SampleName +\
-        str(Sinogram) + '.sin.DMP' + ' -Z ' + str(options.ZeroPadding)
+    
+    if platform.node()[0:6]=="merlin":
+        reccommand = '/afs/psi/project/TOMCAT_pipeline/Merlin/tomcat_pipeline/src/Reconstruction/lib/gridRec -c ' +\
+            str(RotationCenter[i]) + ' -D ' + options.SinDir + '/ ' + SampleName +\
+            str(Sinogram) + '.sin.DMP' + ' -Z ' + str(options.ZeroPadding)
+    else:
+        reccommand = 'gridrec_' + platform.architecture()[0][:-3] + ' -c ' +\
+            str(RotationCenter[i]) + ' -D ' + options.SinDir + '/ ' + SampleName +\
+            str(Sinogram) + '.sin.DMP' + ' -Z ' + str(options.ZeroPadding)
     if options.Filter:
         # Add filter to the end of the command (if the user specified one)
         reccommand += ' -f ' + options.Filter
@@ -434,9 +440,14 @@ if options.Test:
     print
     print 80 * '_'
 else:
-    viewcommand = 'fiji -eval \'run("Image Sequence...", "open=' +\
-        os.path.abspath(options.SinDir) +\
-        ' starting=1 increment=1 scale=100 file=rec or=[] sort");\' &'
+    if platform.node()[0:6]=="merlin":
+        viewcommand = '/opt/fiji/Fiji.app/fiji-linux64 -eval \'run("Image Sequence...", "open=' +\
+            os.path.abspath(options.SinDir) +\
+            ' starting=1 increment=1 scale=100 file=rec or=[] sort");\' &'
+    else:        
+        viewcommand = 'fiji -eval \'run("Image Sequence...", "open=' +\
+            os.path.abspath(options.SinDir) +\
+            ' starting=1 increment=1 scale=100 file=rec or=[] sort");\' &'
     os.system(viewcommand)
     print 80 * '_'
     print
