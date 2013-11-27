@@ -32,6 +32,9 @@ parser.add_option('-b', '--Beta', dest='Beta',
                   default=False, action='store_true',
                   help='Plot *only* Beta. By default the script is plotting '
                        'both delta and beta')
+parser.add_option('-s', '--Save', dest='Save',
+                  default=False, action='store_true',
+                  help='Save plot as NAME.pdf in current directory.')
 (options, args) = parser.parse_args()
 
 # show the help if no parameters are given
@@ -69,5 +72,11 @@ plt.xlabel('Photon Energy [eV]')
 plt.axvspan(8000, 45000, facecolor='r', alpha=0.5)
 plt.xlim([min(Data[:, 0]), max(Data[:, 0])])
 plt.legend(loc=3)
+
+if options.Save:
+    plt.savefig(os.path.splitext(os.path.basename(options.DataFile))[0] +
+                '.pdf')
+    print 'Saved plot as',\
+        os.path.splitext(os.path.basename(options.DataFile))[0] + '.pdf'
 
 plt.show()
