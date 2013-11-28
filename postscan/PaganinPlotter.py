@@ -9,7 +9,7 @@ and plot it with this script
 [Index of Refraction]: http://henke.lbl.gov/optical_constants/getdb2.html
 '''
 
-# 2013-11-27: First version: 
+# 2013-11-27: First version:
 # 2013-11-28: Updated to show selected values
 
 from optparse import OptionParser
@@ -59,6 +59,11 @@ if os.path.exists(os.path.abspath(options.DataFile)) is not True:
     print 'I was not able to find', os.path.abspath(options.DataFile)
     print 'Please try again with the correct path or existing file...'
     print
+    print 'Maybe you first need to download a data file. For this, go to'
+    print 'http://henke.lbl.gov/optical_constants/getdb2.html'
+    print 'enter a chemical formula and request a "Text File", then save it',\
+        'somewhere.'
+    print
     sys.exit(1)
 Data = loadtxt(options.DataFile, skiprows=2)
 # Convert the ndarray to lists for simpler handling
@@ -80,13 +85,6 @@ if not options.Delta and not options.Beta:
     plt.ylabel('Delta/Beta')
 PlotTitle = os.path.basename(options.DataFile)
 
-if options.Save:
-    plt.savefig(os.path.splitext(os.path.abspath(options.DataFile))[0] +
-                '.pdf')
-    print
-    print 'Saved plot to',\
-        os.path.splitext(os.path.abspath(options.DataFile))[0] + '.pdf'
-
 # Get the closest to the chosen energy and show values around that to the user.
 # http://stackoverflow.com/a/9706105/323100
 ClosestEnergy = Energy[min(range(len(Energy)),
@@ -100,7 +98,7 @@ else:
 print 'value of', options.Energy, 'keV, the closest value found in',\
     os.path.basename(options.DataFile), 'is', round(ClosestEnergy) / 1000,\
     'keV'
-print 'The values aournd this energy are:'
+print 'The values around this energy are:'
 print '    *', round(Energy[Energy.index(ClosestEnergy)-1]) / 1000,\
     'keV, with',
 CurrentDelta = Delta[Energy.index(ClosestEnergy)-1]
@@ -136,5 +134,12 @@ CurrentDelta = Delta[Energy.index(ClosestEnergy)+1]
 CurrentBeta = Beta[Energy.index(ClosestEnergy)+1]
 print 'a Delta of', "%.4g" % CurrentDelta, 'and a Beta of',\
     "%.4g" % CurrentBeta
+
+if options.Save:
+    plt.savefig(os.path.splitext(os.path.abspath(options.DataFile))[0] +
+                '.pdf')
+    print
+    print 'Saved plot to',\
+        os.path.splitext(os.path.abspath(options.DataFile))[0] + '.pdf'
 
 plt.show()
