@@ -9,7 +9,8 @@ and plot it with this script
 [Index of Refraction]: http://henke.lbl.gov/optical_constants/getdb2.html
 '''
 
-# First version: 2013-11-27
+# 2013-11-27: First version: 
+# 2013-11-28: Updated to show selected values
 
 from optparse import OptionParser
 import sys
@@ -35,6 +36,12 @@ parser.add_option('-b', '--Beta', dest='Beta',
 parser.add_option('-s', '--Save', dest='Save',
                   default=False, action='store_true',
                   help='Save plot as NAME.pdf in current directory.')
+parser.add_option('-e', '--Energy', dest='Energy',
+                  type=float, default=20.,
+                  help='Energy [keV] you would like to know Delta and Beta')
+parser.add_option('-t', '--tomcat', dest='TOMCAT',
+                  default=False, action='store_true',
+                  help='Plot only TOMCAT-range of Energies')
 (options, args) = parser.parse_args()
 
 # show the help if no parameters are given
@@ -47,36 +54,87 @@ if options.DataFile is None:
     print
     sys.exit(1)
 
+# Inform user if we cannot find data file, otherwise load it
 if os.path.exists(os.path.abspath(options.DataFile)) is not True:
     print 'I was not able to find', os.path.abspath(options.DataFile)
     print 'Please try again with the correct path or existing file...'
     print
     sys.exit(1)
-
 Data = loadtxt(options.DataFile, skiprows=2)
+# Convert the ndarray to lists for simpler handling
+Energy = Data[:, 0].tolist()
+Delta = Data[:, 1].tolist()
+Beta = Data[:, 2].tolist()
 
+# Plot Delta and/or Beta
 plt.figure()
 if not options.Beta:
-    plt.loglog(Data[:, 0], Data[:, 1], label='Delta')
+    plt.loglog(Energy, Delta, 'g', label='Delta')
 if not options.Delta:
-    plt.loglog(Data[:, 0], Data[:, 2], label='Beta')
+    plt.loglog(Energy, Beta, 'b', label='Beta')
 if options.Delta:
     plt.ylabel('Delta')
 if options.Beta:
     plt.ylabel('Beta')
 if not options.Delta and not options.Beta:
     plt.ylabel('Delta/Beta')
-plt.title(' '.join([os.path.basename(options.DataFile),
-                    '- red region = TOMCATs range']))
-plt.xlabel('Photon Energy [eV]')
-plt.axvspan(8000, 45000, facecolor='r', alpha=0.5)
-plt.xlim([min(Data[:, 0]), max(Data[:, 0])])
-plt.legend(loc=3)
+PlotTitle = os.path.basename(options.DataFile)
 
 if options.Save:
-    plt.savefig(os.path.splitext(os.path.basename(options.DataFile))[0] +
+    plt.savefig(os.path.splitext(os.path.abspath(options.DataFile))[0] +
                 '.pdf')
-    print 'Saved plot as',\
-        os.path.splitext(os.path.basename(options.DataFile))[0] + '.pdf'
+    print
+    print 'Saved plot to',\
+        os.path.splitext(os.path.abspath(options.DataFile))[0] + '.pdf'
+
+# Get the closest to the chosen energy and show values around that to the user.
+# http://stackoverflow.com/a/9706105/323100
+ClosestEnergy = Energy[min(range(len(Energy)),
+                       key=lambda i:abs(Energy[i] - options.Energy*1000))]
+print
+print 'For',
+if options.Energy == 20.:
+    print 'a default',
+else:
+    print 'the chosen',
+print 'value of', options.Energy, 'keV, the closest value found in',\
+    os.path.basename(options.DataFile), 'is', round(ClosestEnergy) / 1000,\
+    'keV'
+print 'The values aournd this energy are:'
+print '    *', round(Energy[Energy.index(ClosestEnergy)-1]) / 1000,\
+    'keV, with',
+CurrentDelta = Delta[Energy.index(ClosestEnergy)-1]
+CurrentBeta = Beta[Energy.index(ClosestEnergy)-1]
+print 'a Delta of', "%.4g" % CurrentDelta, 'and a Beta of',\
+    "%.4g" % CurrentBeta
+
+print '    *', round(Energy[Energy.index(ClosestEnergy)]) / 1000, 'keV, with',
+CurrentDelta = Delta[Energy.index(ClosestEnergy)]
+CurrentBeta = Beta[Energy.index(ClosestEnergy)]
+print 'a Delta of', "%.4g" % CurrentDelta, 'and a Beta of',\
+    "%.4g" % CurrentBeta
+
+# Plot the closest value found
+PlotTitle += '\nEnergy=' + str(round(ClosestEnergy) / 1000) + ' keV, Delta=' +\
+    str("%.4g" % CurrentDelta) + ', Beta=' + str("%.4g" % CurrentBeta)
+plt.plot(ClosestEnergy, CurrentDelta, 'go')
+plt.plot(ClosestEnergy, CurrentBeta, 'bo')
+plt.title(PlotTitle)
+if not options.TOMCAT:
+    plt.axvspan(8000, 45000, facecolor='r', alpha=0.5)
+    plt.xlim([min(Energy), max(Energy)])
+    plt.legend(loc=3)
+    plt.xlabel('Photon Energy [eV] | red region = TOMCATs range')
+else:
+    plt.xlim([8e3, 45e3])
+    plt.legend(loc='best')
+    plt.xlabel('Photon Energy [eV] | TOMCAT: 8-45 keV')
+
+print '    * and', round(Energy[Energy.index(ClosestEnergy)-1]) / 1000,\
+    'keV, with',
+CurrentDelta = Delta[Energy.index(ClosestEnergy)+1]
+CurrentBeta = Beta[Energy.index(ClosestEnergy)+1]
+print 'a Delta of', "%.4g" % CurrentDelta, 'and a Beta of',\
+    "%.4g" % CurrentBeta
 
 plt.show()
