@@ -1,0 +1,1550 @@
+#  $Source: /cvs/G/SPEC/local/X02DA/ES1/tomography-scan.mac,v $
+#  $Revision: 1.14 $  $Date: 2009/05/06 10:25:47 $#
+# 
+#    2012-09-27   F. Marone
+#    
+#    Tomography macro to be used with the Edge camera (PCO.edge) and Aerotech 
+#    rotation stage for standard experiments
+#
+#
+#       mainscan:       reads the epics parameters in order to run the scan
+#       snap:           triggers the CCD
+#       checkpausestop: check if scan has been stopped or paused
+#       tomoscan:       makes the real tomographic scan
+#---------------------------------------------------------------
+#
+#---------------------------------------------------------------
+#                         A list of names of EPICS variables
+  global  AEROT_PRFX
+  global  AEROT_BUSY
+  global  AEROT_SET_ABS
+  global  AEROT_GET_POSN
+  global  AEROT_SVEL       # Set velocity (deg/s)
+
+  global  AEROT_LLM
+  global  AEROT_HLM
+  global  AEROT_USELM      # Switch to turn the usage of user defined limits on/off
+  global  AEROT_HWLMD      # Cal Limits Off
+
+                           # Useful settings
+  global  AEROT_NTRY       # Max number of retries
+  global  AEROT_DEADBAND   # Requires positioning precision
+  global  AEROT_LOW        # Low Aerotech limit
+  global  AEROT_HIGH       # High Aerotech limit
+  global  AEROT_LOG        # Name of log file
+  global  AEROT_STOP	   # Stop the aerotech stage
+  global  EPICS_GLOBAL_TIMEOUT
+  
+#-----------------------------------------------------------
+#                    Initialise all the global variables
+  def aerotSetup '{
+#     ==========
+
+    if ($# != 1) {
+      print "Usage:    aerotSetup <prefix>"
+      exit
+    }
+
+    AEROT_PRFX = "$1"
+
+    AEROT_BUSY          = sprintf ("%sSMP1:ROTYASTAT",    AEROT_PRFX)
+    AEROT_SET_ABS       = sprintf ("%sSMP1:ROTYUSETP",    AEROT_PRFX)
+    AEROT_GET_POSN      = sprintf ("%sSMP1:ROTYUGETP",    AEROT_PRFX)
+    AEROT_SVEL          = sprintf ("%sSMP1:ROTYSETVE",    AEROT_PRFX)
+    AEROT_LLM           = sprintf ("%sSMP1:ROTYULOLM",    AEROT_PRFX)
+    AEROT_HLM           = sprintf ("%sSMP1:ROTYUHILM",    AEROT_PRFX)
+    AEROT_USELM         = sprintf ("%sSMP1:ROTYUSELM",    AEROT_PRFX)
+    AEROT_HWLMD         = sprintf ("%sSMP1:ROTYHWLMD",    AEROT_PRFX)
+    AEROT_STOP          = sprintf ("%sSMP1:ROTYESTOP.PROC",AEROT_PRFX)
+    EPICS_GLOBAL_TIMEOUT = 2
+
+    if (whatis ("AEROT_NTRY")     != 0x04100004) AEROT_NTRY     =   5
+    if (whatis ("AEROT_DEADBAND") != 0x04100004) AEROT_DEADBAND =   0.01
+    AEROT_LOW      =  -20000
+    AEROT_HIGH     =   20000
+    if (whatis ("AEROT_LOG")      != 0x04200004) {
+      AEROT_LOG = sprintf ("/exchange/tmp/spec/%sAerot.log", AEROT_PRFX)
+    }
+  }'
+#-----------------------------------------------------------
+#                  Move the Aerotech motor with updating display
+#
+  def umv_aerot '{
+#     =========
+
+    global  AEROT_NTRY, AEROT_DEADBAND
+    local   myCnt, myNtries, busy, posn
+
+    if ($# != 1) {
+      print "Usage:   umv_aerot <target-position>"
+      exit
+    }
+    if (whatis ("AEROT_BUSY") != 0x04200004) {
+      print "aerotSetup has not been called."
+      exit
+    }
+    if (AEROT_NTRY <= 0) AEROT_NTRY = 5
+    if (AEROT_DEADBAND <= 0) AEROT_DEADBAND = 0.01
+    _1 = $1
+    if ((_1 < AEROT_LOW) || (_1 > AEROT_HIGH)) {
+      printf ("Usage:   umv_aerot <target-position>\n")
+      printf ("<target-position> must be in range %f to %f\n", AEROT_LOW, AEROT_HIGH)
+      exit
+    }
+    myNtries = 0
+    busy="MOVING"
+                  # Note: this loop is exited via a break.
+    while (busy=="MOVING") {
+      myNtries++
+      epics_put (AEROT_SET_ABS, _1)
+      myCnt = 2000
+      while (busy=="MOVING" && (myCnt > 0)) {
+        sleep (0.1)
+        busy = epics_get (AEROT_BUSY)
+        posn = epics_get (AEROT_GET_POSN)
+        printf ("\r%10.4f", posn)
+        myCnt--
+      }
+            # See if motor is in deadband. Retry if not.
+      _2 = epics_get (AEROT_GET_POSN)
+      if (fabs (_1 - _2) <= AEROT_DEADBAND) break
+
+      if (!file_info (AEROT_LOG, "-e")) {
+        unix (sprintf ("echo | cat > %s", AEROT_LOG))
+        unix (sprintf ("chmod -f 777 %s", AEROT_LOG))
+      }
+      if (myNtries <= AEROT_NTRY) {
+        if (myNtries > 2) {
+          printf          ("%-25s - retry #%d Aerotech position: %f --> %f\n", date (), myNtries, _2, _1)
+          fprintf (AEROT_LOG, "%-25s - retry %#d Aerotech position: %f --> %f\n", date (), myNtries, _2, _1)
+          close (AEROT_LOG); unix (sprintf ("chmod -f 777 %s", AEROT_LOG))
+        }
+      }
+    }
+    printf ("\n")
+  }'
+#----------------------------------------------------------------
+#                  Move the Aerotech motor with no updating display
+#
+  def mv_aerot '{
+#     ========
+
+    global  AEROT_NTRY, AEROT_DEADBAND
+    local   myCnt, myNtries, busy
+
+    if ($# != 1) {
+      print "Usage:   mv_aerot <target-position>"
+      exit
+    }
+    if (whatis ("AEROT_BUSY") != 0x04200004) {
+      print "aerotSetup has not been called."
+      exit
+    }
+    if (AEROT_NTRY <= 0) AEROT_NTRY = 5
+    if (AEROT_DEADBAND <= 0) AEROT_DEADBAND = 0.01
+    _1 = $1
+    if ((_1 < AEROT_LOW) || (_1 > AEROT_HIGH)) {
+      printf ("Usage:   mv_aerot <target-position>\n")
+      printf ("<target-position> must be in range %f to %f\n", AEROT_LOW, AEROT_HIGH)
+      exit
+    }
+    myNtries = 0
+    
+    busy="MOVING"
+                  # Note: this loop is exited via a break.
+    while (busy=="MOVING") {
+      myNtries++
+      epics_put (AEROT_SET_ABS, _1)
+      myCnt = 2000
+      while (busy=="MOVING" && (myCnt > 0)) {
+        sleep (0.1)
+        busy = epics_get (AEROT_BUSY)
+        myCnt--
+      }
+            # See if motor is in deadband. Retry if not.
+      _2 = epics_get (AEROT_GET_POSN)
+      if (fabs (_1 - _2) <= AEROT_DEADBAND) break
+					  
+      if (!file_info (AEROT_LOG, "-e")) {
+        unix (sprintf ("echo | cat > %s", AEROT_LOG))
+        unix (sprintf ("chmod -f 777 %s", AEROT_LOG))
+      }
+      if (myNtries <= AEROT_NTRY) {
+        if (myNtries > 2) {
+          printf          ("%-25s - retry #%d Aerotech position: %f --> %f\n", date (), myNtries, _2, _1)
+          fprintf (AEROT_LOG, "%-25s - retry %#d Aerotech position: %f --> %f\n", date (), myNtries, _2, _1)
+          close (AEROT_LOG); unix (sprintf ("chmod -f 777 %s", AEROT_LOG))
+        }
+      }
+    }
+  }'
+#----------------------------------------------------------
+#            Turn off Micos limits
+#
+  def micosLimOff '{
+#     ===========
+
+    epics_put (MICOS_HWLMD, 2)  # Cal Limits Off
+    sleep (1.0)
+    epics_put (MICOS_USELM, "Yes")
+    epics_put (MICOS_LLM, MICOS_LOW)
+    epics_put (MICOS_HLM, MICOS_HIGH)
+  }'
+#----------------------------------------------------------
+
+  def mainscan '{
+#     ========
+
+    global ROTYMIN
+    global ROTYMAX
+    global OP_MODE   
+    global MAX_TIMEOUT_SOFT_CH   
+    global MAX_TIMEOUT_HARD_CH
+    global SCANTYPE  
+      
+    local  scango
+    
+    aerotSetup X02DA-ES1-
+    
+    # Set timeout for epics_get commands to 5s
+    spec_par("epics_timeout",5)
+    # Set timeout for epics_put commands to 5s
+    MAX_TIMEOUT_SOFT_CH=5
+    MAX_TIMEOUT_HARD_CH=30
+
+    # Setup a monitor for the GO channel, if it does not exist
+    if (epics_par("X02DA-SCAN-SCN1:GO","monitor_check")==-1) {
+      p "Setting up monitor"
+      epics_par("X02DA-SCAN-SCN1:GO","monitor_set")
+    }
+    # Setup a monitor for the Current channel, if it does not exist
+    if (epics_par("ARIDI-PCT:CURRENT","monitor_check")==-1) {
+      p "Setting up monitor"
+      epics_par("ARIDI-PCT:CURRENT","monitor_set")
+    }
+
+    if (epics_get ("X02DA-SCAN-SCN1:STATUS") != "Idle") {
+      beep; p "Warning, the scan status is NOT \"Idle\""
+      printf ("Hit <Ctrl-C> within 2 secs to return to the spec prompt ...")
+      sleep (2)
+      printf ("\n"); epics_put ("X02DA-SCAN-SCN1:STATUS", "Idle",MAX_TIMEOUT_SOFT_CH)
+    }
+    
+    epics_put ("X02DA-SCAN-SCN1:GO", "Stop",MAX_TIMEOUT_SOFT_CH)
+    epics_put ("X02DA-SCAN-SCN1:PAUSE", "Continue",MAX_TIMEOUT_SOFT_CH)
+
+    if (epics_get ("X02DA-SCAN-CAM1:STATUS") != "Idle") {
+      beep; p "Warning, the CCD status is NOT \"Idle\""
+      printf ("Hit <Ctrl-C> within 2 secs to return to the spec prompt ...")
+      sleep (2)
+      printf ("\n"); epics_put ("X02DA-SCAN-CAM1:STATUS", "Idle",MAX_TIMEOUT_SOFT_CH)
+    }
+    
+    samplename_old = "Null"
+    OP_MODE = 1
+###    micosLimOff # The hardware limit switches should always be disable, to be able to rotate -180/180.
+    
+    while (1) {
+                   #       Monitor the Scan Go toggle 
+                   #
+      scango = epics_get ("X02DA-SCAN-SCN1:GO")
+
+      if ($1 == 2) {
+        p "\nHi! Switch to scan-by-scan mode and toggle acquisition!"
+        printf ("Hit <Ctrl-C> to return to the spec prompt ...fast Mode with PCO.EDGE ON")
+      } else if ($1 == 6) {
+        p "\nHi! SPEC is waiting for your toggle on the panel to start the scan."
+        printf ("Hit <Ctrl-C> to return to the spec prompt ...Snap&Step Mode ON")
+      } else if ($1 == "-h") {
+        p "Tomography macro"
+	p " "
+	p "USAGE: mainscan n with n:"
+	p "       n=2  fast scan with PCO.edge"
+	p "       n=6  snap and step scan via camera server in fifo mode"
+	exit
+      } else {
+        p "Tomography macro"
+	p " "
+	p "USAGE: mainscan n with n:"
+	p "       n=2  fast scan with PCO.edge"
+	p "       n=6  snap and step scan via camera server in fifo mode"
+	exit
+      }
+      
+      while (scango != "Start") {
+        sleep (0.1) 
+        scango = epics_get ("X02DA-SCAN-SCN1:GO")
+      }
+      
+      printf ("\n")
+
+      # stop camera if running and reset rotation stage features
+      epics_put("X02DA-CCDCAM:CAMERA","OFF")
+      epics_put ("X02DA-ES1-BOX:MODE_SEL","Custom",MAX_TIMEOUT_SOFT_CH)
+      epics_put ("X02DA-ES1-SMP1:ROTY-PSOMODE","DISABLE",MAX_TIMEOUT_SOFT_CH)
+
+      # scan interruption flag
+      epics_put("X02DA-SCAN-SCN1:INTR",0,MAX_TIMEOUT_SOFT_CH)
+      # scan type
+      SCANTYPE = $1     
+      # filename prefix for the ccd-images
+      FILEPREFIX=epics_get("X02DA-SCAN-CAM1:FILPRE")
+      # folder name
+      FOLDERNAME = epics_get("X02DA-SCAN-CAM1:FILDIR")
+      BASENAME=FILEPREFIX
+      # sample ROI
+      ROI=epics_get("X02DA-SCAN-CAM1:ROI")
+      if (ROI=="") {
+         ROI="P1"
+	 #p ROI
+	 FILEPREFIX=BASENAME
+      } else {
+         #p ROI
+         FILEPREFIX=BASENAME "_" ROI "_"
+      }
+      if (FILEPREFIX==samplename_old) {
+         
+         tty_cntl ("md")
+	 p " "
+         p "Current samplename is the same as the one of the previous scan!"
+	 p "Please change the samplename and start the scan again."
+	 p " "
+         tty_cntl ("me")
+	 SCANTYPE=10
+      }
+      samplename_old=FILEPREFIX
+	 
+      # Check for empty spaces in the samplename
+      space=index(FILEPREFIX," ")
+      if (space!=0) {
+         tty_cntl ("md")
+         p " "
+         p "The samplename must not contain spaces!!!"
+	 p " "
+         tty_cntl ("me")
+	 SCANTYPE=10
+      }
+
+      # Check for "aa" in the samplename (incompatible with cluster)
+      space=index(FILEPREFIX,"aa")
+      if (space!=0) {
+         tty_cntl ("md")
+         p " "
+         p "The samplename must not contain the sequence \"aa\"!!!"
+	 p " "
+         tty_cntl ("me")
+	 SCANTYPE=10
+      }
+      epics_put("X02DA-SCAN-CAM1:FILPRE",FILEPREFIX,MAX_TIMEOUT_SOFT_CH)
+
+      # exposure time in sec
+      EXPOSURE=epics_get("X02DA-SCAN-CAM1:EXPTME")
+      epics_put ("X02DA-CCDCAM:EXPOSURE",EXPOSURE)
+      # delay time in sec
+      DELAY=epics_get("X02DA-CCDCAM:DELAY")
+      # scan values for roty
+      ROTYMIN=epics_get("X02DA-SCAN-SCN1:ROTSTA")
+      ROTYMAX=epics_get("X02DA-SCAN-SCN1:ROTSTO")
+      NUMPOINTS=epics_get("X02DA-SCAN-SCN1:NPRJ")-1
+      NSCANS=epics_get("X02DA-SCAN-SCN1:NSCAN")
+      PRJPERSCAN=(NUMPOINTS+1)/NSCANS
+      ccdXb = epics_get("X02DA-CCDCAM:REGIONX_START")
+      ccdXe = epics_get("X02DA-CCDCAM:REGIONX_END")
+      ccdYb = epics_get("X02DA-CCDCAM:REGIONY_START")
+      ccdYe = epics_get("X02DA-CCDCAM:REGIONY_END")
+
+
+##      values for sample in and out using X motors
+      XLININ=epics_get("X02DA-SCAN-SCN1:SMPIN")
+      XLINOUT=epics_get("X02DA-SCAN-SCN1:SMPOUT")
+      
+##      # values for sample in and out using Y motors
+##      XLININ=epics_get("X02DA-ES1-SMP1:TRY-VAL")
+##      XLINOUT=XLININ-10000.0
+    
+      # number of darks
+      NDARK =epics_get("X02DA-SCAN-SCN1:NPPDRK")
+      # number of flats
+      NFLAT = epics_get("X02DA-SCAN-SCN1:NPPFLT")
+      # oversampling
+      NIMAGE =epics_get("X02DA-SCAN-SCN1:NIMAGE")
+      if (NIMAGE==0)
+         NIMAGE=1
+      
+      if (ROTYMIN==0 && ROTYMAX==360) {
+	 if ((NUMPOINTS+1)%2==0) {
+            tty_cntl ("md")
+	    p "360 degrees scan: an odd number of projections is required"
+	    p "The number of projections has been incremented by 1"
+	    tty_cntl ("me")
+	    p "Numpoints " NUMPOINTS
+	    NUMPOINTS=NUMPOINTS+1
+	    p "Numpoints " NUMPOINTS
+	    epics_put("X02DA-SCAN-SCN1:NPRJ",NUMPOINTS+1)
+	 }
+      }     
+
+      # sleep time in seconds
+      SLEEPTIME=0
+      if ($1==0 || $1==3) {
+         SLEEPTIME=$2
+	 if (SLEEPTIME!=0) {
+	   p "Sleep time: " SLEEPTIME
+	 }
+      }
+      
+      # Sample coordinates
+      X=epics_get("X02DA-ES1-SMP1:TRX.DVAL")
+      Y= epics_get("X02DA-ES1-SMP1:TRY-VAL")
+      Z=epics_get("X02DA-ES1-SMP1:TRZ.DVAL")
+      XX=epics_get("X02DA-ES1-SMP1:TRXX.DVAL")
+      ZZ=epics_get("X02DA-ES1-SMP1:TRZZ.DVAL")
+                 
+      #Read user id
+      USERID=epics_get("X02DA-SCAN-SCN1:USERID")
+         
+      #Read machine and beamline parameters
+      if (OP_MODE==0)
+         RING_CURRENT_START = epics_get("ARIDI-PCT:CURRENT")
+      else
+         RING_CURRENT_START = epics_get("X02DA-SCAN-SCN1:CURR")
+      if (RING_CURRENT_START<10) {
+         tty_cntl ("md")
+	 p " "
+         p "\aRing current is too low to start a scan!!!!"
+	 p " "
+	 tty_cntl ("me")
+         epics_put ("X02DA-SCAN-SCN1:GO",0)
+	 SCANTYPE=10
+      }    
+      
+      # Energy
+      CXP1=epics_get("X02DA-OP-MO1:C1THE.RBV")
+      if (CXP1>-100) {
+         BEAM_ENERGY = "Polychromatic radiation"
+      } else {
+         BEAM_ENERGY =epics_get("X02DA-OP-ENE:ACTUAL")
+         STRIPE = epics_get("X02DA-OP-MO1:ACT_STR")
+      }
+
+      # Filters
+      FE_Filter=epics_get("X02DA-FE-FI1:READ")
+      OP_FI1=epics_get("X02DA-OP-FI1:READ")      
+      OP_FI2=epics_get("X02DA-OP-FI2:READ")      
+      OP_FI3=epics_get("X02DA-OP-FI3:READ")           
+            
+        #Read detector parameters
+      CAMERA = epics_get("X02DA-ES1-CAM1:CAM_SEL")
+      MICROSCOPE = epics_get("X02DA-ES1-MS:MS_SEL")
+      MAGNIFICATION = epics_get("X02DA-ES1-MS:MAGNF")
+      SCINTILLATOR = epics_get("X02DA-ES1-MS1:SCINTIL")
+      PXSIZE = epics_get("X02DA-ES1-CAM1:ACT_PIXL_SIZE")
+
+        #Define or read some important paths and variables
+      STORAGE=epics_get("X02DA-SCAN-CAM1:STORAGE")
+      
+ 	#Define the temporary path for logging 
+      loggingbasepath="/sls/X02DA/data/e" USERID "/public/"
+
+      LOGFILE=loggingbasepath FILEPREFIX ".log"
+      DBFILE=loggingbasepath FILEPREFIX ".xml"
+
+	#Sample path
+      samplebasepath="/sls/X02DA/data/e" USERID "/" STORAGE "/" FILEPREFIX
+      sampletifpath= samplebasepath "/tif/"
+
+	#Log path
+      logpath="/sls/X02DA/data/e" USERID "/" STORAGE "/log"
+
+      if (space==0 && SCANTYPE!=10) {
+         unix (sprintf ("mkdir %s ", logpath))
+         unix (sprintf ("mkdir %s ", samplebasepath))
+         unix (sprintf ("mkdir %s ", sampletifpath))
+         epics_put("X02DA-CCDCAM:FILENAME",FILEPREFIX,EPICS_GLOBAL_TIMEOUT)
+
+         #Prepare EPICS channel for ImageProMacro... Attention X:// is HARDCODED!!!!
+         FOLDERNAME="X://" STORAGE "/" FILEPREFIX "/tif/"
+         #p "Length " length(FOLDERNAME)
+         if (length(FOLDERNAME)>39) {
+            p " "
+            p "The samplename is too long!!!"
+	    p " "
+	    SCANTYPE=10
+         } else {
+            #p "Foldername " FOLDERNAME
+            epics_put("X02DA-CCDCAM:FILEPATH",FOLDERNAME,EPICS_GLOBAL_TIMEOUT)
+         }
+      }
+            
+      sleep(2)  # To leave enough time to the camera server to set the new frametime to the EPICS channel.
+      
+      # Start logging           
+   
+      if (SCANTYPE!=10) {
+
+         printf ( "User ID : e%d\n",USERID)     
+         if (SCANTYPE==2) { 
+             printf ( "FAST-TOMO scan of sample %s started on %s \n",FILEPREFIX,date()) 
+         } else if (SCANTYPE==6) {   
+             printf ( "SNAP&STEP-TOMO scan of sample %s started on %s \n",FILEPREFIX,date())
+         }    
+         printf ( "--------------------Beamline Settings-------------------------\n")
+         printf ( "Ring current [mA]           : %3.3f \n",RING_CURRENT_START)
+         if (CXP1>-100) {
+            printf ( "Beam energy                 : %s \n",BEAM_ENERGY)
+         } else {
+            printf ( "Beam energy  [keV]          : %2.3f \n",BEAM_ENERGY)
+            printf ( "Monostripe                  : %s \n",STRIPE)
+         }	      
+         printf ( "FE-Filter                   : %s \n",FE_Filter)
+         printf ( "OP-Filter 1                 : %s \n",OP_FI1)
+         printf ( "OP-Filter 2                 : %s \n",OP_FI2)
+         printf ( "OP-Filter 3                 : %s \n",OP_FI3)
+         printf ( "--------------------Detector Settings-------------------------\n")
+         printf ( "Camera                      : %s \n",CAMERA)
+         printf ( "Microscope                  : %s \n",MICROSCOPE)
+         printf ( "Magnification               : %5.2f \n",MAGNIFICATION)      
+         printf ( "Scintillator                : %s \n",SCINTILLATOR)      
+         printf ( "Exposure time [ms]          : %d \n",EXPOSURE)
+         printf ( "Delay time [ms]             : %d \n",DELAY)
+	 if (SCANTYPE==6) {
+	    WAITTIME=epics_get("X02DA-ES1-SMP1:ROTYTRIGDLY")
+	    printf ( "Stabilization time [ms]     : %d \n",WAITTIME)
+	 }
+	 SHUT=epics_get("X02DA-ES1-MSSH1:EXP-MODE")
+	 if (SHUT=="IOC-Ctrl") 
+	    printf ( "Millisecond shutter         : not used\n")
+	 else
+	    printf ( "Millisecond shutter         : used\n")
+         printf ( "X-ROI                       : %d - %d\n",ccdXb,ccdXe)
+         printf ( "Y-ROI                       : %d - %d\n",ccdYb,ccdYe)
+         printf ( "Actual pixel size [um]      : %4.2f\n",PXSIZE)
+         printf ( "------------------------Scan Settings-------------------------\n")
+         printf ( "Sample folder                : %s \n",samplebasepath)
+         printf ( "File Prefix                  : %s \n",FILEPREFIX)
+         printf ( "Number of scans              : %d \n",NSCANS)
+         printf ( "Number of projections        : %d \n",NUMPOINTS+1)
+         printf ( "Number of projections/scan   : %d \n",PRJPERSCAN)
+         printf ( "Number of darks              : %d \n",NDARK)
+         printf ( "Number of flats              : %d \n",NFLAT)
+         printf ( "Number of inter-flats        : 0\n")
+         printf ( "Flat frequency               : 0\n")
+         printf ( "Rot Y min position  [deg]    : %3.3f \n",ROTYMIN)
+         printf ( "Rot Y max position  [deg]    : %3.3f \n",ROTYMAX)
+         if (NUMPOINTS!=0) 
+            printf ( "Angular step [deg]           : %3.3f \n",(ROTYMAX-ROTYMIN)/NUMPOINTS)
+         else
+            printf ( "Angular step [deg]           : 0\n")
+         printf ( "Sample In   [um]             : %5.0f \n",XLININ)
+         printf ( "Sample Out  [um]	     : %5.0f \n",XLINOUT)
+         printf ( "-----------------------Sample coordinates---------------------\n")
+         printf ( "X-coordinate                 : %5.2f \n",X)
+         printf ( "Y-coordinate                 : %5.2f \n",Y)
+         printf ( "Z-coordinate                 : %5.2f \n",Z)
+         printf ( "XX-coordinate                : %5.2f \n",XX)
+         printf ( "ZZ-coordinate                : %5.2f \n",ZZ)
+         printf ( "--------------------------------------------------------------\n")
+
+         fprintf (DBFILE, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")     
+         fprintf (DBFILE, "<sample>\n")     
+         fprintf (DBFILE, "<name>%s</name>\n",BASENAME)
+         fprintf (LOGFILE, "User ID : e%d\n",USERID)     
+         fprintf (DBFILE, "<userid>e%d</userid>\n",USERID)     
+         fprintf (DBFILE, "<pointOfInterest>\n")     
+         fprintf (DBFILE, "<name>%s</name>\n",ROI)
+         fprintf (DBFILE, "<coordinates>\n")
+         fprintf (DBFILE, "<x>%5.2f</x>\n",X)     
+         fprintf (DBFILE, "<y>%5.2f</y>\n",Y)     
+         fprintf (DBFILE, "<z>%5.2f</z>\n",Z)     
+         fprintf (DBFILE, "<xx>%5.2f</xx>\n",XX)     
+         fprintf (DBFILE, "<zz>%5.2f</zz>\n",ZZ)     
+         fprintf (DBFILE, "<coordinateSystem>beamline</coordinateSystem>\n")
+         fprintf (DBFILE, "</coordinates>\n\n")
+         fprintf (DBFILE, "<scan>\n")     
+         if (SCANTYPE==2) { 
+            fprintf (LOGFILE, "FAST-TOMO scan of sample %s started on %s \n",FILEPREFIX,date())     
+            fprintf (DBFILE, "<scanType>FAST-TOMO</scanType>\n")
+         } else if (SCANTYPE==6) {    
+            fprintf (LOGFILE, "SNAP&STEP-TOMO scan of sample %s started on %s \n",FILEPREFIX,date())     
+            fprintf (DBFILE, "<scanType>SNAP-AND-STEP-TOMO</scanType>\n")
+         }
+         fprintf (DBFILE, "<startDate>%s</startDate>\n\n",date())     
+         fprintf (LOGFILE, "--------------------Beamline Settings-------------------------\n")
+         fprintf (DBFILE, "<beamlineParameters>\n")     
+         fprintf (LOGFILE, "Ring current [mA]           : %3.3f \n",RING_CURRENT_START)
+         fprintf (DBFILE, "<parameter name=\"Ring current\" unit=\"mA\">%3.3f</parameter>\n",RING_CURRENT_START)     
+         if (CXP1>-100) {
+            fprintf (LOGFILE, "Beam energy                 : %s \n",BEAM_ENERGY)
+            fprintf (DBFILE, "<parameter name=\"Beam energy\" >%s</parameter>\n",BEAM_ENERGY)
+         } else {	      
+            fprintf (LOGFILE, "Beam energy  [keV]          : %2.3f \n",BEAM_ENERGY)
+            fprintf (DBFILE, "<parameter name=\"Beam energy\" unit=\"keV\">%2.3f</parameter>\n",BEAM_ENERGY)     
+            fprintf (LOGFILE, "Monostripe                  : %s \n",STRIPE)      
+            fprintf (DBFILE, "<parameter name=\"Monostripe\">%s</parameter>\n",STRIPE)
+         }     
+         fprintf (LOGFILE, "FE-Filter                   : %s \n",FE_Filter)
+         fprintf (DBFILE, "<parameter name=\"FE-Filter\">%s</parameter>\n",FE_Filter)
+         fprintf (LOGFILE,"OP-Filter 1                 : %s \n",OP_FI1)
+         fprintf (DBFILE, "<parameter name=\"OP-Filter 1\">%s</parameter>\n",OP_FI1)
+         fprintf (LOGFILE,"OP-Filter 2                 : %s \n",OP_FI2)
+         fprintf (DBFILE, "<parameter name=\"OP-Filter 2\">%s</parameter>\n",OP_FI2)
+         fprintf (LOGFILE,"OP-Filter 3                 : %s \n",OP_FI3)
+         fprintf (DBFILE, "<parameter name=\"OP-Filter 3\">%s</parameter>\n",OP_FI3)
+         fprintf (DBFILE, "</beamlineParameters>\n\n")     
+         fprintf (LOGFILE, "--------------------Detector Settings-------------------------\n")
+         fprintf (DBFILE, "<detectorParameters>\n")     
+         fprintf (LOGFILE, "Camera                      : %s \n",CAMERA)
+         fprintf (DBFILE, "<parameter name=\"Camera\">%s</parameter>\n",CAMERA)     
+         fprintf (LOGFILE, "Microscope                  : %s \n",MICROSCOPE)
+         fprintf (DBFILE, "<parameter name=\"Microscope\">%s</parameter>\n",MICROSCOPE)     
+         fprintf (LOGFILE, "Magnification               : %5.2f \n",MAGNIFICATION)
+         fprintf (DBFILE, "<parameter name=\"Objective\">%s</parameter>\n",MAGNIFICATION)     
+         fprintf (LOGFILE, "Scintillator                : %s \n",SCINTILLATOR)      
+         fprintf (DBFILE, "<parameter name=\"Scintillator\">%s</parameter>\n",SCINTILLATOR)     
+         fprintf (LOGFILE, "Exposure time [ms]          : %d \n",EXPOSURE)
+         fprintf (DBFILE, "<parameter name=\"Exposure time\" unit=\"ms\">%d</parameter>\n",EXPOSURE)     
+         fprintf (LOGFILE, "Delay time [ms]             : %d \n",DELAY)
+         fprintf (DBFILE, "<parameter name=\"Delay time\" unit=\"ms\">%d</parameter>\n",DELAY)     
+	 if (SCANTYPE==6) {
+            fprintf (LOGFILE, "Stabilization time [ms]     : %d \n",WAITTIME)
+            fprintf (DBFILE, "<parameter name=\"Stabilization time\" unit=\"ms\">%d</parameter>\n",WAITTIME)
+	 }   
+	 if (SHUT=="IOC-Ctrl") {
+            fprintf (LOGFILE, "Millisecond shutter [ms]    : not used\n")
+            fprintf (DBFILE, "<parameter name=\"Millisecond shutter\">not used</parameter>\n")     
+	 } else {
+            fprintf (LOGFILE, "Millisecond shutter [ms]    : used\n")
+            fprintf (DBFILE, "<parameter name=\"Millisecond shutter\">used</parameter>\n") 
+	 }      
+         fprintf (LOGFILE, "X-ROI                       : %d - %d\n",ccdXb,ccdXe)
+         fprintf (DBFILE, "<parameter name=\"X-ROI Start\">%d</parameter>\n",ccdXb)
+         fprintf (DBFILE, "<parameter name=\"X-ROI End\">%d</parameter>\n",ccdXe)
+         fprintf (LOGFILE, "Y-ROI                       : %d - %d\n",ccdYb,ccdYe)
+         fprintf (DBFILE, "<parameter name=\"Y-ROI Start\">%d</parameter>\n",ccdYb)
+         fprintf (DBFILE, "<parameter name=\"Y-ROI End\">%d</parameter>\n",ccdYe)
+         fprintf (LOGFILE, "Actual pixel size [um]      : %4.2f\n",PXSIZE)
+         fprintf (DBFILE, "<parameter name=\"Actual pixel size\">%4.2f</parameter>\n",PXSIZE)
+         fprintf (DBFILE, "</detectorParameters>\n\n")     
+         fprintf (LOGFILE, "------------------------Scan Settings-------------------------\n")
+         fprintf (DBFILE, "<scanParameters>\n")     
+         fprintf (LOGFILE, "Sample folder                : %s \n",samplebasepath)
+         fprintf (DBFILE, "<parameter name=\"Sample folder\">%s</parameter>\n",samplebasepath)     
+         fprintf (LOGFILE, "File Prefix                  : %s \n",FILEPREFIX)
+         fprintf (DBFILE, "<parameter name=\"File Prefix\">%s</parameter>\n",FILEPREFIX)     
+         fprintf (LOGFILE, "Number of projections        : %d \n",NUMPOINTS+1)
+         fprintf (DBFILE, "<parameter name=\"Number of projections\">%d</parameter>\n",NUMPOINTS+1)     
+         fprintf (LOGFILE, "Number of darks              : %d \n",NDARK)
+         fprintf (DBFILE, "<parameter name=\"Number of darks\">%d</parameter>\n",NDARK)     
+         fprintf (LOGFILE, "Number of flats              : %d \n",NFLAT)
+         fprintf (DBFILE, "<parameter name=\"Number of flats\">%d</parameter>\n",NFLAT)     
+         fprintf (LOGFILE, "Number of inter-flats        : 0\n")
+         fprintf (DBFILE, "<parameter name=\"Number of inter-flats\">%d</parameter>\n",0)     
+         if (NIMAGE>1) {
+            fprintf (LOGFILE, "Oversampling                 : %d \n",NIMAGE)
+            fprintf (DBFILE, "<parameter name=\"Oversampling\">%d</parameter>\n",NIMAGE) 
+         }    
+         fprintf (LOGFILE, "Flat frequency               : 0\n")
+         fprintf (DBFILE, "<parameter name=\"Flat frequency\">%d</parameter>\n",0)     
+         fprintf (LOGFILE, "Rot Y min position  [deg]    : %3.3f \n",ROTYMIN)
+         fprintf (DBFILE, "<parameter name=\"Rot Y min position\" unit=\"deg\">%3.3f</parameter>\n",ROTYMIN)     
+         fprintf (LOGFILE, "Rot Y max position  [deg]    : %3.3f \n",ROTYMAX)
+         fprintf (DBFILE, "<parameter name=\"Rot Y max position\" unit=\"deg\">%3.3f</parameter>\n",ROTYMAX)     
+         if (NUMPOINTS!=0) {
+            fprintf (LOGFILE, "Angular step [deg]           : %3.3f \n",(ROTYMAX-ROTYMIN)/NUMPOINTS)
+            fprintf (DBFILE, "<parameter name=\"Angular step\" unit=\"deg\">%3.3f</parameter>\n",(ROTYMAX-ROTYMIN)/NUMPOINTS)
+         } else {
+            fprintf (LOGFILE, "Angular step [deg]           : 0\n")
+            fprintf (DBFILE, "<parameter name=\"Angular step\" unit=\"deg\">%d</parameter>\n",0)
+         }  
+         fprintf (LOGFILE, "Sample In   [um]             : %5.0f \n",XLININ)
+         fprintf (DBFILE, "<parameter name=\"Sample In\" unit=\"um\">%d</parameter>\n",XLININ)
+         fprintf (LOGFILE, "Sample Out  [um]             : %5.0f \n",XLINOUT)
+         fprintf (DBFILE, "<parameter name=\"Sample Out\" unit=\"um\">%d</parameter>\n",XLINOUT)
+         fprintf (DBFILE, "</scanParameters>\n\n")     
+         fprintf (LOGFILE, "-----------------------Sample coordinates---------------------\n")
+         fprintf (LOGFILE, "X-coordinate                 : %5.2f \n",X)
+         fprintf (LOGFILE, "Y-coordinate                 : %5.2f \n",Y)
+         fprintf (LOGFILE, "Z-coordinate                 : %5.2f \n",Z)
+         fprintf (LOGFILE, "XX-coordinate                : %5.2f \n",XX)
+         fprintf (LOGFILE, "ZZ-coordinate                : %5.2f \n",ZZ)
+         fprintf (LOGFILE, "--------------------------------------------------------------\n")
+        
+         # Make the scan
+      
+         if (SCANTYPE==2 || SCANTYPE==6) {       
+            fasttomoscan FILEPREFIX ROTYMIN ROTYMAX NUMPOINTS EXPOSURE XLININ XLINOUT NDARK NFLAT NIMAGE CXP1
+         }
+      }
+           
+      #Set the Scan start button to Stopped
+      epics_put ("X02DA-SCAN-SCN1:GO", 0)
+      epics_put("X02DA-SCAN-CAM1:FILPRE",BASENAME)
+      sleep(3)
+    }
+  }'
+#---------------------------------------------------------------
+#
+  def checkpausestop '{
+#     ==============
+#
+         # Check if scan has been paused !
+         #
+    scanstatus = epics_get ("X02DA-SCAN-SCN1:GO")
+    pausestatus = epics_get ("X02DA-SCAN-SCN1:PAUSE")
+
+    while (pausestatus != "Continue" && scanstatus == "Start") {
+      sleep (0.1)
+      pausestatus = epics_get ("X02DA-SCAN-SCN1:PAUSE")
+      scanstatus = epics_get ("X02DA-SCAN-SCN1:GO")
+    }
+
+          # Abort scan if stop button is pressed!
+          #
+    scanstatus = epics_get ("X02DA-SCAN-SCN1:GO")
+    if (scanstatus != "Start" ) {
+      p "SCAN HAS BEEN INTERRUPTED !!!!!!"
+      fprintf (LOGFILE, "SCAN HAS BEEN INTERRUPTED !!!!!!\n")
+      epics_put("X02DA-SCAN-SCN1:STATUS",0)
+      epics_put("X02DA-SCAN-SCN1:PAUSE",0)
+      epics_put("X02DA-SCAN-SCN1:SCNFINTME",0)
+      epics_put("X02DA-SCAN-SCN1:ACTROT",0)
+      beep; sleep (0.5); beep; sleep (0.5); beep
+      scan_int = 1;
+      break
+    }
+  }'
+#---------------------------------------------------------------
+#
+  def checkpausestop_fast '{
+#     ===================
+
+    global scan_int
+
+    # Abort scan if stop button is pressed!
+
+    scanstatus = epics_get ("X02DA-SCAN-SCN1:GO")
+    if (scanstatus != "Start" ) {
+      p "SCAN HAS BEEN INTERRUPTED !!!!!!"
+      fprintf (LOGFILE, "SCAN HAS BEEN INTERRUPTED !!!!!!\n")
+      ##epics_put("X02DA-SCAN-SCN1:STATUS",0,MAX_TIMEOUT_SOFT_CH)
+      epics_put("X02DA-SCAN-CAM1:STATUS",0,MAX_TIMEOUT_SOFT_CH)
+      epics_put("X02DA-CCDCAM:SAVESTOP",0,MAX_TIMEOUT_SOFT_CH)
+      
+      camsavebusy=epics_get("X02DA-CCDCAM:FILESAVEBUSY.RVAL")
+      while (camsavebusy==1) {
+	  camsavebusy=epics_get("X02DA-CCDCAM:FILESAVEBUSY.RVAL")
+	  sleep(0.5)
+      }
+
+      epics_put("X02DA-CCDCAM:CAMERA","OFF",MAX_TIMEOUT_SOFT_CH)
+
+      epics_put (AEROT_STOP, 0,MAX_TIMEOUT_HARD_CH)
+      scan_int = 1;
+
+      beep; sleep (0.5); beep; sleep (0.5); beep
+      epics_put("X02DA-SCAN-SCN1:SCNFINTME",0,MAX_TIMEOUT_SOFT_CH)
+      epics_put("X02DA-SCAN-SCN1:ACTROT",0,MAX_TIMEOUT_SOFT_CH)
+      break
+    }
+
+    # Check if scan has been paused!
+
+    pausestatus = epics_get ("X02DA-SCAN-SCN1:PAUSE")
+    while (pausestatus != "Continue") {
+      sleep (0.1)
+      pausestatus = epics_get ("X02DA-SCAN-SCN1:PAUSE")
+    }
+
+  }'
+
+##---------------------------------------------------------------
+  
+  def snap_fifo '{
+#     =========
+
+    local EXPOSURE, secs
+    local testcounter, sleeptime
+    local abs_status
+    global ROTYMIN, ROTYMAX
+    global totscantime
+    sleeptime=0.5
+
+#   Let perform some checks for beam status!    
+    
+    if (OP_MODE==0) {
+       RING_CURRENT_STATUS = epics_get("ARIDI-PCT:CURRENT")
+       abs_status = epics_get("X02DA-FE-AB1:ILK-STATE")
+       absorber_status = epics_get("X02DA-FE-AB1:CLOSE4BL")
+    } else {
+       RING_CURRENT_STATUS = epics_get("X02DA-SCAN-SCN1:CURR")
+       abs_status = "Not active"
+       absorber_status = "Open enabled"
+    }
+    
+    # Interrupt the scan if there is a beam dump, an optics interlock or the absorber has been closed
+
+    if (RING_CURRENT_STATUS <= (RING_CURRENT_START-0.05*RING_CURRENT_START)) {
+       p "Scan is going to be interrupted because of a beam dump!"
+       fprintf (LOGFILE, "Scan is going to be interrupted because of a beam dump!\n")
+       epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+    }
+    if (abs_status == "Active" ) {
+       p "Scan is going to be interrupted because of an optics interlock!"
+       fprintf (LOGFILE, "Scan is going to be interrupted because of an optics interlock!\n")
+       epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+    }
+
+    if (absorber_status == "Close forced" ) {
+       p "Scan is going to be interrupted because the absorber has been closed!"
+       fprintf (LOGFILE, "Scan is going to be interrupted because the absorber has been closed!\n")
+       epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+    }
+    
+    #start camera
+    cam_status=epics_get("X02DA-CCDCAM:CAMERA")
+    if (cam_status=="OFF") {
+       p "Starting camera"
+       epics_put("X02DA-CCDCAM:CAMERA","RUNNING",EPICS_GLOBAL_TIMEOUT)
+       sleep(sleeptime)
+    }
+    #start transfer
+    epics_put("X02DA-CCDCAM:FTRANSFER",1,EPICS_GLOBAL_TIMEOUT)
+
+    #check if any error occured:
+    sleep(sleeptime+1)
+    #monitoring file transfer process
+    camprogress=epics_get("X02DA-CCDCAM:CAMPROGRESS")
+    camsavebusy=epics_get("X02DA-CCDCAM:FILESAVEBUSY.RVAL")
+    #p "transfering images..." camprogress "% done"
+	      
+    sleep(sleeptime)
+    saving_error=epics_get("X02DA-CCDCAM:FTRANSFER.SEVR",EPICS_GLOBAL_TIMEOUT)
+    if (saving_error == 2) {
+
+        p "SCAN WAS INTERRUPTED!!!!!!!!!! "
+	p "directory names missmatch: enter correct value into the MEDM pannel and restart scan"
+	epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH) 
+	checkpausestop_fast
+	break
+    } 
+
+    while (camsavebusy==1) {
+    
+        if (OP_MODE==0) {
+            RING_CURRENT_STATUS = epics_get("ARIDI-PCT:CURRENT")
+            abs_status = epics_get("X02DA-FE-AB1:ILK-STATE")
+            absorber_status = epics_get("X02DA-FE-AB1:CLOSE4BL")
+        } else {
+            RING_CURRENT_STATUS = epics_get("X02DA-SCAN-SCN1:CURR")
+            abs_status = "Not active"
+            absorber_status = "Open enabled"
+	}
+    
+        # Interrupt the scan if there is a beam dump, an optics interlock or the absorber has been closed
+
+        if (RING_CURRENT_STATUS <= (RING_CURRENT_START-0.05*RING_CURRENT_START)) {
+            p "Scan is going to be interrupted because of a beam dump!"
+            fprintf (LOGFILE, "Scan is going to be interrupted because of a beam dump!\n")
+            epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+        }
+        if (abs_status == "Active" ) {
+            p "Scan is going to be interrupted because of an optics interlock!"
+            fprintf (LOGFILE, "Scan is going to be interrupted because of an optics interlock!\n")
+            epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+        }
+
+        if (absorber_status == "Close forced" ) {
+            p "Scan is going to be interrupted because the absorber has been closed!"
+            fprintf (LOGFILE, "Scan is going to be interrupted because the absorber has been closed!\n")
+            epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+        }
+
+        checkpausestop_fast
+
+        camprogress=epics_get("X02DA-CCDCAM:CAMPROGRESS")
+	camsavebusy=epics_get("X02DA-CCDCAM:FILESAVEBUSY.RVAL")
+#	p "acquiring projections... " camprogress "% ..done"
+#
+#        if (ROTYMAX!=ROTYMIN) {
+#           angle_act=epics_get(AEROT_GET_POSN)
+#           timetogo=totscantime*(1-((angle_act-ROTYMIN)/(ROTYMAX-ROTYMIN)))
+#	   actrot=((angle_act-ROTYMIN)/(ROTYMAX-ROTYMIN)) #maybe should be commented
+#	   epics_put("X02DA-SCAN-SCN1:SCNFINTME",timetogo,MAX_TIMEOUT_SOFT_CH)
+#	   epics_put("X02DA-SCAN-SCN1:ACTROT",actrot,MAX_TIMEOUT_SOFT_CH) #maybe should be commented
+#	}
+#	sleep(2)
+    }
+    p "acquiring projections... " camprogress "% ..done"
+    
+    #end acquisition when transfer is ready
+    sleep(sleeptime)
+    epics_put("X02DA-CCDCAM:CAMERA","OFF")
+    sleep(2) # It takes 2 seconds for the camera to be really switched off!!
+    epics_put("X02DA-SCAN-CAM1:STATUS","Idle",MAX_TIMEOUT_SOFT_CH)
+
+  }'
+
+##---------------------------------------------------------------
+  
+  def snap_setup '{
+#     ==========
+    
+##  Usage: snap_setup <exptime in ms>
+##  File path and prefix need to be already set
+
+    if ($# != 1) {
+      p "\aWrong number of args for snap_setup"
+      exit
+    }
+    
+    exposure = $1
+    
+    #Set the scan status flag to running
+    epics_put("X02DA-SCAN-SCN1:STATUS","Running",MAX_TIMEOUT_SOFT_CH)
+
+    #Set scan type to continuous mode (just in case)
+    epics_put ("X02DA-ES1-SCAN1:TYPE",0,MAX_TIMEOUT_SOFT_CH)
+    
+    #Setting file format
+    epics_put ("X02DA-CCDCAM:EXPOSURE", exposure)
+    epics_put("X02DA-CCDCAM:FILEFORMAT","TIFF")
+    
+    #select Recorder mode:
+    epics_put("X02DA-CCDCAM:STOREMODE","Recorder")
+    p "\nRecorder mode ON"
+    epics_put("X02DA-CCDCAM:RECMODE","Sequence")
+    epics_put("X02DA-CCDCAM:ACQMODE","Auto")
+    epics_put("X02DA-CCDCAM:TRIGGER","ext.exp sfttrg")
+    epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+   
+    ## this is to make the camera running with the correct settings
+    epics_put("X02DA-CCDCAM:CLEARMEM","CLEAR",EPICS_GLOBAL_TIMEOUT) 
+    epics_put("X02DA-CCDCAM:CAMERA","RUNNING")
+    sleep(1)
+    epics_put("X02DA-CCDCAM:CAMERA","OFF")
+    sleep(2)
+    
+    #set signal generator
+    epics_put("X02DA-ES1-SIG:PULSE_WIDTH",exposure/1000)
+    epics_put("X02DA-ES1-SIG:DELAY",exposure/20000)
+    epics_put("X02DA-ES1-SIG:START.DLY2",0)
+    epics_put("X02DA-ES1-SIG:PERIOD_NUM",1)
+    
+    #Start the camera
+    epics_put("X02DA-CCDCAM:CAMERA","RUNNING")
+    epics_put("X02DA-SCAN-CAM1:STATUS","Acquiring",MAX_TIMEOUT_SOFT_CH)
+
+  }'
+  
+##---------------------------------------------------------------
+  
+  def snap '{
+#     ====
+
+#   Let perform some checks for beam status!    
+    
+    if (OP_MODE==0) {
+       RING_CURRENT_STATUS = epics_get("ARIDI-PCT:CURRENT")
+       abs_status = epics_get("X02DA-FE-AB1:ILK-STATE")
+       absorber_status = epics_get("X02DA-FE-AB1:CLOSE4BL")
+    } else {
+       RING_CURRENT_STATUS = epics_get("X02DA-SCAN-SCN1:CURR")
+       abs_status = "Not active"
+       absorber_status = "Open enabled"
+    }
+    
+    # Interrupt the snap if there is a beam dump, an optics interlock or the absorber has been closed
+
+    if (RING_CURRENT_STATUS <= (RING_CURRENT_START-0.05*RING_CURRENT_START)) {
+       p "Snap cannot be performed because of a beam dump!"
+       fprintf (LOGFILE, "Snap cannot be performed because of a beam dump!\n")
+       epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+    }
+    if (abs_status == "Active" ) {
+       p "Snap cannot be performed because of an optics interlock!"
+       fprintf (LOGFILE, "Snap cannot be performed because of an optics interlock!\n")
+       epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+    }
+
+    if (absorber_status == "Close forced" ) {
+       p "Snap cannot be performed because the absorber has been closed!"
+       fprintf (LOGFILE, "Snap cannot be performed because the absorber has been closed!\n")
+       epics_put("X02DA-SCAN-SCN1:GO",0,MAX_TIMEOUT_SOFT_CH)
+    }
+    
+    #snap
+    epics_put("X02DA-ES1-SIG:START.PROC",1,EPICS_GLOBAL_TIMEOUT)	
+
+  }'
+
+##---------------------------------------------------------------
+  
+  def snap_transfer '{
+#     =============
+
+##  Usage: snap_transfer <filenr> <nimage>
+
+    if ($# != 2) {
+      p "\aWrong number of args for snap_transfer"
+      exit
+    }
+    
+    filenr = $1
+    nimage = $2 
+    
+    #Turn camera off
+    epics_put("X02DA-CCDCAM:CAMERA","OFF")
+    epics_put("X02DA-SCAN-CAM1:STATUS","Idle",MAX_TIMEOUT_SOFT_CH)
+    
+    p "Saving ..."
+    sleep(1)
+    epics_put("X02DA-CCDCAM:FILENR",filenr)
+    epics_put("X02DA-CCDCAM:SAVESTART",1)
+    epics_put("X02DA-CCDCAM:SAVESTOP",nimage) 
+    sleep(1)
+    
+    #start transfer
+    epics_put("X02DA-CCDCAM:FTRANSFER",1,EPICS_GLOBAL_TIMEOUT)
+        
+    epics_put("X02DA-CCDCAM:TRIGGER","auto trigger",MAX_TIMEOUT_SOFT_CH)
+    epics_put("X02DA-CCDCAM:RECMODE","Ring Buffer")
+    epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+
+    #Set the scan status flag to idle
+    epics_put("X02DA-SCAN-SCN1:STATUS","Idle",MAX_TIMEOUT_SOFT_CH)
+    
+  }'
+#  ---------------------------------------------------------------------------------------
+#  fasttomoscan:  runs a fast tomography scan with pco.edge.
+#  this version performs both on-the-fly and snap&step scans 
+#  ---------------------------------------------------------------------------------------
+#
+#  Usage fasttomoscan <filename-prefix> <rotymin> <rotymax> <number of points> <exposuretime> <xlinin> <xlinout> <ndark> <nflat> <nimage> <cxp1>
+
+
+def fasttomoscan '{
+    local fileprefix rotymin rotymax numpoints exposure
+    local rotystart,rotystop,rotyspeed,rotacc
+    local xlinout xlinin 
+    local nflat,ndark,rfreq
+    local imagecnt iscannum realFileNumber
+    local camsavebusy sleeptime
+    local maxproj waitingtime accangle rotyspeed_base
+    local saving_error
+    local readoutmode
+       
+    global scan_int,totscantime
+
+    if ($# != 11) {
+      p "\aWrong number of args for tomoscan"
+      exit
+    }
+    
+        # filename prefix for the ccd-images
+    fileprefix=epics_get("X02DA-SCAN-CAM1:FILPRE")
+
+        # scan values for roty
+    rotymin=$2
+    rotymax=$3
+    numpoints=$4
+    maxproj=numpoints+1
+    nscans=epics_get("X02DA-SCAN-SCN1:NSCAN")
+    prjperscan=numpoints/NSCANS
+        # exposure time in msec
+    exposure=$5
+        # values for sample in and out
+    xlinin=$6
+    xlinout=$7
+        # number of darks
+    ndark = $8
+        # number of flats
+    nflat = $9
+        # oversampling
+    nimage = $10
+    cxp1 = $11
+    scan_int=0
+
+    #Set the scan status flag to running
+    epics_put("X02DA-SCAN-SCN1:STATUS","Running",MAX_TIMEOUT_SOFT_CH)
+    p "\nTOMOGRAPHIC SCAN STARTED "
+    sleeptime=0.5
+
+    #Set scan type to continuous mode (just in case)
+    epics_put ("X02DA-ES1-SCAN1:TYPE",0,MAX_TIMEOUT_SOFT_CH)
+    
+    #Setting exposure time
+    #epics_put ("X02DA-SCAN-CAM1:EXPTME", exposure,MAX_TIMEOUT_SOFT_CH)
+    #epics_put ("X02DA-CCDCAM:EXPOSURE", exposure)
+    epics_put("X02DA-CCDCAM:FILEFORMAT","TIFF")
+    rotyspeed_base = epics_get("X02DA-ES1-SMP1:ROTYSETVE")
+    
+    #select FIFO mode:
+    epics_put("X02DA-CCDCAM:STOREMODE","FIFO Buffer")
+    p "\nFifo mode ON"
+    epics_put("X02DA-CCDCAM:RECMODE","Sequence")
+    epics_put("X02DA-CCDCAM:TRIGGER","auto trigger")
+    epics_put("X02DA-CCDCAM:ACQMODE","Auto")
+    epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+   
+    ## this is to make the camera running with the correct settings
+    epics_put("X02DA-CCDCAM:CLEARMEM","CLEAR",EPICS_GLOBAL_TIMEOUT) 
+    epics_put("X02DA-CCDCAM:CAMERA","RUNNING")
+    sleep(1)
+    epics_put("X02DA-CCDCAM:CAMERA","OFF")   
+    sleep(2)
+     
+    #Setting file prefix
+    epics_put("X02DA-SCAN-CAM1:FILPRE",fileprefix,MAX_TIMEOUT_SOFT_CH)
+         
+    #Switching off microscope NSC motors status request; 13-Nov-2006/ais
+    epics_put("X02DA-ES1-MS1:ROTstsSeq.SCAN","Passive",MAX_TIMEOUT_SOFT_CH)
+    epics_put("X02DA-ES1-MS1:FOCstsSeq.SCAN","Passive",MAX_TIMEOUT_SOFT_CH)
+
+    deltarot=rotymax-rotymin
+
+    #Angular increment
+    if (numpoints!=0)     
+        droty=deltarot/numpoints
+    else
+       droty=0
+    if (SCANTYPE==6) {
+       epics_put("X02DA-ES1-SMP1:ROTYTWEAK",droty,MAX_TIMEOUT_SOFT_CH)
+    }
+
+    ###sleep(1)
+    ccdframetime=epics_get("X02DA-CCDCAM:COCTIME")
+    sleep(1)
+        
+    waitdelay=0
+    if (SCANTYPE==6) 
+       waitdelay=epics_get("X02DA-ES1-SMP1:ROTYTRIGDLY")
+    p  "Wait delay " waitdelay
+    totscantime=((prjperscan+1)*(ccdframetime+waitdelay)/1000)	
+    p "Total scan time " totscantime " s"
+
+    if (deltarot!=0 && SCANTYPE==2) {
+       rotyspeed=deltarot/(prjperscan*ccdframetime)*1000
+    }
+    else
+       rotyspeed=rotyspeed_base 
+
+    rotacc=epics_get("X02DA-ES1-SMP1:ROTYSETAC")
+    #rotacc=2000  # From aerotech controller, expressed in angle/s^2 !!!
+    
+    accangle=(rotyspeed*rotyspeed)/rotacc
+    waitingtime=rotyspeed/rotacc
+    if (waitingtime<=0.2999) {
+        waitingtime = 0.3}
+       
+    if (deltarot!=0) {
+      if (SCANTYPE==2) {
+         rotystart = rotymin-rotyspeed*waitingtime-accangle
+         rotystop = rotystart+deltarot+2*(rotyspeed*waitingtime+accangle)
+      } else if (SCANTYPE==6) {
+         rotystart = rotymin-droty
+         rotystop = rotymax
+      }
+
+    } else {
+       rotystart = rotymin
+       rotystop = rotymax
+    }
+
+    p "Expected frame time: " ccdframetime " ms"
+    p "Angular scan: "  deltarot " degrees"
+    p "Rotation speed (angle/s): " rotyspeed
+    p "Base rotation speed (angle/s): " rotyspeed_base
+    p "Start position : " rotystart
+    p "Acceleration angle: " accangle
+    p "Endposition : " rotystop
+    p "Set the rotation speed to : ", rotyspeed
+
+    #just in case the user forgets to start the freerun:
+    
+    epics_put (AEROT_SVEL,rotyspeed, MAX_TIMEOUT_HARD_CH)
+    epics_put("X02DA-ES1-SMP1:ROTYSETFREER", "FREERUN_ON")
+    sleep(1)
+
+    ##########  Acquire dark images ####################################    
+
+    tty_cntl ("md")
+    p "\nAcquiring dark images"
+    tty_cntl ("me")
+
+#    p "Move to start position..."
+#    p "Move rotation axis to : " rotystart
+#    epics_put (AEROT_SVEL,rotyspeed_base,MAX_TIMEOUT_HARD_CH)
+#    mv_aerot rotystart; wait(1)
+
+    # Closing filter for dark acquisition!
+    p "Dump the beam by moving OP-FILTER 4 at -12.0 mm ..."
+    if (cxp1>-100) {
+       epics_put("X02DA-OP-FI4:TRY.VAL",-22.0,MAX_TIMEOUT_HARD_CH)
+    } else {
+       epics_put("X02DA-OP-FI4:TRY.VAL",-12.0,MAX_TIMEOUT_HARD_CH)
+    }
+    p "Wait for afterglow..."
+    sleep(5)
+    p "Done!"
+
+    # Set the channels of the tomographic panel
+    epics_put("X02DA-SCAN-CAM1:STATUS","Acquiring")
+    # Clear buffer
+    epics_put("X02DA-CCDCAM:CLEARMEM","CLEAR")
+
+    p "Saving dark images 1-" ndark 
+    sleep(sleeptime)
+    epics_put("X02DA-CCDCAM:FILENR",1)
+    epics_put("X02DA-CCDCAM:SAVESTART",1)
+    epics_put("X02DA-CCDCAM:SAVESTOP",ndark) 
+  
+    sleep(sleeptime)
+    realFileNumber=epics_get("X02DA-CCDCAM:FILENR")
+    while (realFileNumber != 1) {
+        epics_put("X02DA-CCDCAM:FILENR",1)
+	realFileNumber=epics_get("X02DA-CCDCAM:FILENR")
+	p "It takes some time ..."
+    }
+
+    # Triggering the CCD acquisition sequence
+    p "Send trigger to the camera"
+    snap_fifo
+   
+    epics_put("X02DA-SCAN-CAM1:STATUS","Idle")
+    p "Darks acquisition done!"
+ 
+#    p "Moving the sample out of the beam..."
+#    mv e1sx xlinout; wait(1)
+
+    ########### Acquire pre-flat-field images ##################################################  
+
+    if (scan_int==0) {     
+
+       tty_cntl ("md")
+       p "\nAcquiring pre-flat images"
+       tty_cntl ("me")
+       
+       p "Moving sample out of the beam for flat field acquisition"
+       
+       xlin = epics_get("X02DA-ES1-SMP1:TRX.VAL")
+##       laserlin = epics_get("X02DA-ES2-LASER1:TRX.VAL")
+##       dx = ((xlinout-xlin)/1000)+laserlin
+       mv e1sx xlinout; wait(1)
+##       epics_put("X02DA-ES2-LASER1:TRX.VAL",dx)
+       
+       p "Opening the shutter"
+       p "Moving up the filter OP-FILTER 4 at 0.0 mm..."
+       epics_put("X02DA-OP-FI4:TRY.VAL",0.0,MAX_TIMEOUT_HARD_CH)
+       epics_put("X02DA-FE-AB1:CLOSE4BL","Open enabled",MAX_TIMEOUT_HARD_CH)
+       p "Opening the ms shutter"
+       epics_put("X02DA-ES1-MSSH1:IOC-SET", "Open"  )       #opening the ms-shutter 
+       sleep(5)
+       
+       p "Done!"
+       
+       if (SCANTYPE==6) {
+          shutter=epics_get("X02DA-ES1-MSSH1:EXP-MODE")
+	  if (shutter=="Cam-Ctrl") {
+	     epics_put("X02DA-CCDCAM:DELAY",waitdelay)     
+             epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+	     sleep(0.5)
+       }
+	  }
+	  
+       # Set the channels of the tomographic panel
+       epics_put("X02DA-SCAN-CAM1:STATUS","Acquiring")
+       # Clear buffer
+       epics_put("X02DA-CCDCAM:CLEARMEM","CLEAR",EPICS_GLOBAL_TIMEOUT)
+
+       # Saving pre-scan images   
+       p "Saving pre-scan reference images " ndark+1 "-" ndark+nflat 
+       sleep(sleeptime)
+       epics_put("X02DA-CCDCAM:FILENR",ndark+1)
+       epics_put("X02DA-CCDCAM:SAVESTART",1)
+       epics_put("X02DA-CCDCAM:SAVESTOP",nflat)
+     
+       sleep(sleeptime)
+       realFileNumber=epics_get("X02DA-CCDCAM:FILENR")
+       while (realFileNumber != ndark+1) {
+           epics_put("X02DA-CCDCAM:FILENR",ndark+1)
+	   realFileNumber=epics_get("X02DA-CCDCAM:FILENR")
+	   p "It takes some time ..."
+       }
+      
+       # Triggering the CCD acquisition sequence
+       p "Send trigger to the camera"
+       snap_fifo
+
+       epics_put("X02DA-SCAN-CAM1:STATUS","Idle")
+       p "Pre-flats acquisition done!"
+	
+	p "Closing the ms-shutter..."
+        epics_put("X02DA-ES1-MSSH1:EXP-MODE", "IOC-Ctrl" )   #closing the ms-shutter
+        epics_put("X02DA-ES1-MSSH1:IOC-SET", "Close"  )      #closing the ms-shutter
+       
+       if (SCANTYPE==6) {
+	  if (shutter=="Cam-Ctrl") {
+	     epics_put("X02DA-CCDCAM:DELAY",0)     
+             epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+	     sleep(0.5)
+	     }
+       }
+    }
+
+
+    ########### Acquire projection images ##################################################  
+    
+  
+    if (scan_int==0) {     
+        imagecnt=ndark+nflat+1 
+
+        tty_cntl ("md")
+	p "\nAcquiring projection images"  
+        tty_cntl ("me")
+
+        # Saving projection images           
+
+        p "Saving projection images " imagecnt "-" imagecnt+numpoints
+
+        epics_put("X02DA-CCDCAM:FILENR",ndark+nflat+1,EPICS_GLOBAL_TIMEOUT)
+	epics_put("X02DA-CCDCAM:SAVESTART",1,EPICS_GLOBAL_TIMEOUT)
+        epics_put("X02DA-CCDCAM:SAVESTOP",1+numpoints,EPICS_GLOBAL_TIMEOUT)
+
+        sleep(sleeptime)
+        realFileNumber=epics_get("X02DA-CCDCAM:FILENR")
+        while (realFileNumber != ndark+nflat+1) {
+            epics_put("X02DA-CCDCAM:FILENR",ndark+nflat+1)
+	    realFileNumber=epics_get("X02DA-CCDCAM:FILENR")
+	    p "It takes some time ..."
+        }
+
+        p "Moving sample back to measuring position... "
+##	xlin = epics_get("X02DA-ES1-SMP1:TRX.VAL")
+##    	laserlin = epics_get("X02DA-ES2-LASER1:TRX.VAL")
+##    	dx = ((xlinin-xlin)/1000)+laserlin
+    	mv e1sx xlinin; wait(1)
+##    	epics_put("X02DA-ES2-LASER1:TRX.VAL",dx)
+        
+#	if (SCANTYPE==2) {
+#           p "Set the speed to : ", rotyspeed
+#           epics_put (AEROT_STOP,0,MAX_TIMEOUT_HARD_CH)
+#           epics_put (AEROT_SVEL,rotyspeed,MAX_TIMEOUT_HARD_CH)
+#	}
+
+	# Set the channels of the tomographic panel
+        epics_put("X02DA-SCAN-CAM1:STATUS","Acquiring")
+        # Clear buffer
+ 	epics_put("X02DA-CCDCAM:CLEARMEM","CLEAR",EPICS_GLOBAL_TIMEOUT)
+
+	if (SCANTYPE==6) {
+           epics_put ("X02DA-ES1-BOX:MODE_SEL","Snap\'n\'Step",MAX_TIMEOUT_SOFT_CH)	   
+	   epics_put ("X02DA-ES1-SMP1:ROTYSETAC",500,MAX_TIMEOUT_HARD_CH)
+	   epics_put ("X02DA-ES1-SMP1:ROTY-PSOMODE","SNAP-N-STEP",MAX_TIMEOUT_SOFT_CH)
+	   epics_put ("X02DA-ES1-SMP1:ROTYTWEAK",droty,MAX_TIMEOUT_HARD_CH)
+	   epics_put ("X02DA-ES1-SMP1:ROTYSREP",numpoints+1,MAX_TIMEOUT_SOFT_CH)
+	   epics_put ("X02DA-ES1-SMP1:ROTYSCNT",0,MAX_TIMEOUT_SOFT_CH)	   
+	   epics_put ("X02DA-CCDCAM:TRIGGER","ext.exp sfttrg",MAX_TIMEOUT_SOFT_CH)
+           epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+	   sleep(1)	   
+           epics_put("X02DA-CCDCAM:CAMERA","RUNNING",EPICS_GLOBAL_TIMEOUT)
+	   sleep(sleeptime)
+        }
+        	
+	p "Rotation starts"
+        
+	if (SCANTYPE==2) {         
+	 epics_put("X02DA-ES1-SMP1:ROTYSETFREER", "FREERUN_OFF")
+         sleep(1)
+         epics_put("X02DA-ES1-SMP1:ROTYSETMOD360","Set")
+         sleep(1)
+         mv_aerot rotystart; wait(1)
+         epics_put (AEROT_SVEL,rotyspeed, MAX_TIMEOUT_HARD_CH)
+	 epics_put("X02DA-ES1-SMP1:ROTYSETFREER", "FREERUN_ON")
+         #epics_put(AEROT_SET_ABS,rotystop) # only needed for non free run operation 
+	 
+	 p "Start of scan " FILEPREFIX " on " date()
+         fprintf (LOGFILE, "Start of scan %s on %s \n",FILEPREFIX, date()) 
+        
+	} else if (SCANTYPE==6) {
+	   p "Start rotation"
+	   epics_put("X02DA-ES1-SMP1:ROTYD+.PROC",1)
+	}
+	
+	p "opening the ms-shutter..."
+        epics_put("X02DA-ES1-MSSH1:EXP-MODE", "IOC-Ctrl" )   #opening the ms-shutter
+        epics_put("X02DA-ES1-MSSH1:IOC-SET", "Open"  )       #opening the ms-shutter   
+	
+	p "Send trigger to the camera"
+	snap_fifo
+        
+	p "Closing the ms-shutter..."
+        epics_put("X02DA-ES1-MSSH1:EXP-MODE", "IOC-Ctrl" )   #closing the ms-shutter
+        epics_put("X02DA-ES1-MSSH1:IOC-SET", "Close"  )      #closing the ms-shutter
+              
+	epics_put("X02DA-SCAN-CAM1:STATUS","Idle")
+
+##        epics_put (AEROT_SVEL,10.0, MAX_TIMEOUT_HARD_CH)
+	epics_put("X02DA-ES1-SMP1:ROTYSETFREER", "FREERUN_ON")
+        sleep(1)
+
+        if (SCANTYPE==6) {
+           epics_put ("X02DA-ES1-BOX:MODE_SEL","Custom",MAX_TIMEOUT_SOFT_CH)
+	   epics_put ("X02DA-ES1-SMP1:ROTYSETAC",rotacc,MAX_TIMEOUT_HARD_CH)
+	   epics_put ("X02DA-ES1-SMP1:ROTY-PSOMODE","DISABLE",MAX_TIMEOUT_SOFT_CH)
+	   epics_put ("X02DA-CCDCAM:TRIGGER","auto trigger",MAX_TIMEOUT_SOFT_CH)
+           epics_put("X02DA-CCDCAM:SET_PARAM","SET")	   
+        }
+
+	if (scan_int==0)
+	   p "Projections acquisition done!"
+    } 
+
+    ########### Acquire post-flat-field images ##################################################  
+
+    if (scan_int==0) {     
+	  
+       tty_cntl ("md")
+       p "\nAcquiring post-flat images"
+       tty_cntl ("me")
+
+       p "Moving sample out of the beam for flat field acquisition"
+       
+       xlin = epics_get("X02DA-ES1-SMP1:TRX.VAL")
+##       laserlin = epics_get("X02DA-ES2-LASER1:TRX.VAL")
+##       dx = ((xlinout-xlin)/1000)+laserlin
+       mv e1sx xlinout
+##       epics_put("X02DA-ES2-LASER1:TRX.VAL",dx)
+       sleep(5)
+       #epics_put("X02DA-ES1-SMP1:TRY-VAL",xlinout) # Vertical out-of-beam-translation
+       #sleep(5)      
+
+       if (SCANTYPE==6) {
+	  if (shutter=="Cam-Ctrl") {
+	     epics_put("X02DA-CCDCAM:DELAY",waitdelay)     
+             epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+	     sleep(0.5)
+	     }
+       }
+       
+       # Set the channels of the tomographic panel
+       epics_put("X02DA-SCAN-CAM1:STATUS","Acquiring")
+       # Clear buffer
+       epics_put("X02DA-CCDCAM:CLEARMEM","CLEAR")
+
+       # Saving post-scan images   
+       p "Saving post-scan reference images " ndark+nflat+numpoints+2 "-" ndark+2*nflat+numpoints+1 
+
+       epics_put("X02DA-CCDCAM:FILENR",ndark+nflat+numpoints+2)
+       epics_put("X02DA-CCDCAM:SAVESTART",1)
+       epics_put("X02DA-CCDCAM:SAVESTOP",nflat)
+     
+       sleep(sleeptime)
+       realFileNumber=epics_get("X02DA-CCDCAM:FILENR")
+       while (realFileNumber != ndark+nflat+numpoints+2) {
+           epics_put("X02DA-CCDCAM:FILENR",ndark+nflat+numpoints+2)
+	   realFileNumber=epics_get("X02DA-CCDCAM:FILENR")
+	   p "It takes some time ..."
+       }
+
+	p "opening the ms-shutter..."
+        epics_put("X02DA-ES1-MSSH1:EXP-MODE", "IOC-Ctrl" )   #opening the ms-shutter
+        epics_put("X02DA-ES1-MSSH1:IOC-SET", "Open"  )       #opening the ms-shutter 
+	      
+       # Triggering the CCD acquisition sequence
+       p "Send trigger to the camera"
+
+       snap_fifo
+
+       epics_put("X02DA-SCAN-CAM1:STATUS","Idle")
+       p "Post-flat acquisition done!"
+	
+	p "Closing the ms-shutter..."
+        epics_put("X02DA-ES1-MSSH1:EXP-MODE", "IOC-Ctrl" )   #closing the ms-shutter
+        epics_put("X02DA-ES1-MSSH1:IOC-SET", "Close"  )      #closing the ms-shutter
+	
+       if (SCANTYPE==6) {
+	  if (shutter=="Cam-Ctrl") {
+	     epics_put("X02DA-CCDCAM:DELAY",0)     
+             epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+	     sleep(0.5)
+	     }
+       }
+    }
+             
+   p "\nMoving back to initial conditions... "
+
+#  Close the shutter and put sample back !
+
+   p "Dump the beam by moving OP-FILTER 4 at -12.0 mm..."
+   if (cxp1>-100) {
+      epics_put("X02DA-OP-FI4:TRY.VAL",-22.0,MAX_TIMEOUT_HARD_CH)
+#      epics_put("X02DA-FE-AB1:CLOSE4BL","Close forced",MAX_TIMEOUT_HARD_CH)
+   } else {
+      epics_put("X02DA-OP-FI4:TRY.VAL",-12.0,MAX_TIMEOUT_HARD_CH)
+   }
+       
+#   p "Set speed back to 90..."
+#    
+#   epics_put (AEROT_STOP,0,MAX_TIMEOUT_HARD_CH)
+#   epics_put (AEROT_SVEL,rotyspeed_base,MAX_TIMEOUT_HARD_CH)
+#
+#   mv_aerot rotymin; wait(1)
+#   mv e1sx xlinout; wait(1)
+#   p "mv Rotation X " rotymin
+#   p "mv Sample X to " xlinout
+        
+    p "Moving sample back to measuring position... "
+   xlin = epics_get("X02DA-ES1-SMP1:TRX.VAL")
+##    laserlin = epics_get("X02DA-ES2-LASER1:TRX.VAL")
+##    dx = ((xlinin-xlin)/1000)+laserlin
+    mv e1sx xlinin
+##    epics_put("X02DA-ES2-LASER1:TRX.VAL",dx)
+	 
+   epics_put("X02DA-SCAN-SCN1:SCNFINTME",0,MAX_TIMEOUT_SOFT_CH)
+
+   if (SCANTYPE==6) {
+      epics_put ("X02DA-ES1-BOX:MODE_SEL","Custom",MAX_TIMEOUT_SOFT_CH)
+      epics_put ("X02DA-ES1-SMP1:ROTY-PSOMODE","DISABLE",MAX_TIMEOUT_SOFT_CH)
+      epics_put("X02DA-CCDCAM:TRIGGER","auto trigger")
+      epics_put ("X02DA-ES1-SMP1:ROTYSCNT",0,MAX_TIMEOUT_SOFT_CH)
+   }	   
+ 
+   #Switching on microscope NSC motors status request; 13-Nov-2006/ais
+   epics_put("X02DA-ES1-MS1:ROTstsSeq.SCAN",".5 second",MAX_TIMEOUT_SOFT_CH)
+   epics_put("X02DA-ES1-MS1:FOCstsSeq.SCAN",".5 second",MAX_TIMEOUT_SOFT_CH)
+ 
+   p "TOMOGRAPHIC SCAN FINISHED"
+   fprintf (LOGFILE, "TOMOGRAPHIC SCAN FINISHED at %s \n",date())
+   fprintf (DBFILE, "<endDate>%s</endDate>\n\n",date())
+   fprintf (DBFILE, "</scan>\n")
+   fprintf (DBFILE, "</pointOfInterest>\n")
+   fprintf (DBFILE, "</sample>")
+
+   # Close the log file, copy it into the tif folder of the sample and delete it from the public...
+   close(LOGFILE)
+   close(DBFILE)
+        
+   unix (sprintf ("cp %s %s", LOGFILE,sampletifpath))
+   unix (sprintf ("ln %s%s.log %s", sampletifpath,fileprefix,logpath))
+   unix (sprintf ("rm %s ", LOGFILE))
+   
+   if (scan_int==0) {
+      unix (sprintf ("/usr/local/epms/bin/epmsupload -noImage -xml %s", DBFILE))
+###      unix (sprintf ("curl -X PUT -H \"Content-Type: application/xml\" -d @\"%s\" http://x02da-www-1:8080/ch.psi.epms.web/rs/epms/upload", DBFILE))
+      unix (sprintf ("cp %s %s", DBFILE,sampletifpath))
+      unix (sprintf ("ln %s%s.xml %s", sampletifpath,fileprefix,logpath))
+   } else {
+      epics_put("X02DA-SCAN-SCN1:INTR",1,MAX_TIMEOUT_SOFT_CH)
+   }
+   unix (sprintf ("rm %s ", DBFILE))
+      
+   p "Set STOREMODE and RECMODE back to Recorder and Ring Buffer (for preview purposes)"
+   epics_put("X02DA-CCDCAM:STOREMODE","Recorder")
+   epics_put("X02DA-CCDCAM:RECMODE","Ring Buffer")
+   epics_put("X02DA-CCDCAM:SET_PARAM","SET")
+   p "Fifo mode OFF"
+
+   # Set the scan status flag to Idle
+   epics_put("X02DA-SCAN-SCN1:STATUS","Idle",MAX_TIMEOUT_SOFT_CH)
+}'
+#---------------------------------------------------------------
