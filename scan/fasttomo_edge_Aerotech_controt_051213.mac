@@ -1482,11 +1482,16 @@ def fasttomoscan '{
    } else {
       epics_put("X02DA-OP-FI4:TRY.VAL",-12.0,MAX_TIMEOUT_HARD_CH)
    }
+   p "Stop Freerun"
+   epics_put("X02DA-ES1-SMP1:ROTYSETFREER", "FREERUN_OFF")
+   sleep(1)
+   p "Remodulo the rotation angle"
+   epics_put("X02DA-ES1-SMP1:ROTYSETMOD360","Set")
        
-#   p "Set speed back to 90..."
+   p "Set speed back to 90..."
 #    
 #   epics_put (AEROT_STOP,0,MAX_TIMEOUT_HARD_CH)
-#   epics_put (AEROT_SVEL,rotyspeed_base,MAX_TIMEOUT_HARD_CH)
+   epics_put (AEROT_SVEL,rotyspeed_base,MAX_TIMEOUT_HARD_CH)
 #
 #   mv_aerot rotymin; wait(1)
 #   mv e1sx xlinout; wait(1)
