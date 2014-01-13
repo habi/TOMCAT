@@ -26,58 +26,59 @@ import os
 from optparse import OptionParser
 import subprocess
 import shutil
+import platform
 
 # clear the commandline
 os.system('clear')
 
 # Use Pythons Optionparser to define and read the options, and also
 # give some help to the user
-parser = OptionParser()
-usage = "usage: %prog [options] arg"
-parser.add_option('-D', '--Directory', dest='SampleFolder',
+Parser = OptionParser()
+Parser.add_option('-D', '--Directory', dest='SampleFolder',
                   help='Folder of the Sample you want to reconstruct with the '
                        'different parameters',
                   metavar='path')
-parser.add_option('-d', '--Delta', dest='Delta',
+Parser.add_option('-d', '--Delta', dest='Delta',
                   type='float',
                   help='Delta you want to start with',
                   metavar='3e-10')
-parser.add_option('-b', '--Beta', dest='Beta', type='float',
+Parser.add_option('-b', '--Beta', dest='Beta', type='float',
                   help='Beta you want to start with',
                   metavar='3e-10')
-parser.add_option('-z', dest='Distance', type='int',
+Parser.add_option('-z', dest='Distance', type='int',
                   help='Distance to the scintillator in mm',
                   metavar=33)
-parser.add_option('-r', '--range', dest='Range', type='int',
+Parser.add_option('-r', '--range', dest='Range', default=3, type='int',
                   help='Orders of magnitude you want to iterate through. By '
-                       'default the script only iterates through delta. If '
-                       'you also want to iterate through beta, then add the '
-                       '-i parameter.',
+                       'default the script iterates through three orders of '
+                       'magnitude of *only* delta. If  you also want to '
+                       'iterate through beta, then add the -i parameter.',
                   metavar='3')
-parser.add_option('-i', '--iteratebeta', dest='IterateBeta',
+Parser.add_option('-i', '--iteratebeta', dest='IterateBeta',
                   default=False, action='store_true',
                   help='Iterate over beta. Default: Do not iterate over beta',
                   metavar=1)
-parser.add_option('-c', '--center', dest='RotationCenter', type='float',
+Parser.add_option('-c', '--center', dest='RotationCenter', type='float',
                   help='RotationCenter for reconstructing the slices. '
                        'Default: Read value from logfile, or set to 1280 if '
                        'if nothing found in logfile.',
                   metavar='1283.25')
-parser.add_option('-v', '--verbose', dest='Verbose',
+Parser.add_option('-v', '--verbose', dest='Verbose',
                   default=False, action='store_true',
                   help='Be really chatty. Default: Tell us only the relevant '
                        'stuff.',
                   metavar=1)
-parser.add_option('-t', '--test', dest='Test',
+Parser.add_option('-t', '--test', dest='Test',
                   default=False, action='store_true',
                   help='Only do a test-run to see the details, do not'
                        'actually reconstruct the slices. Default: go for it!',
                   metavar=1)
-(options, args) = parser.parse_args()
+(options, Arguments) = Parser.parse_args()
 
-# show the help if no parameters are given
+# Show the help if no parameters are given, otherwise convert path to sample to
+# absolute path
 if options.SampleFolder is None:
-    parser.print_help()
+    Parser.print_help()
     print 'Example:'
     print 'The command below calculates the Paganin reconstuctions of', \
         'Sample A with Delta values varying from 3e-4 to 3e-10, a', \
@@ -88,36 +89,38 @@ if options.SampleFolder is None:
                         '-d 3e-7 -r 3 -b 3e-10 -z 32')
     print
     sys.exit(1)
+else:
+    options.SampleFolder = os.path.abspath(options.SampleFolder)
 
-if os.path.exists(os.path.abspath(options.SampleFolder)) is not True:
-    print 'I was not able to find', os.path.abspath(options.SampleFolder)
-    print ('Please try again with a correct/existing folder. Maybe choose '
-           'one of the directories below...')
+# Switch to 'test' mode if we are not on console 2, since the necessary
+# commands cannot run.
+if "cons-2" not in platform.node():
+    print 'We are not running on "x02da-cons-2", switching "test" to "True"', \
+        'on, so we can run the script'
+    options.Test = True
+
+# See if the desired sample folder actually exist
+if not os.path.exists(options.SampleFolder):
+    print 'I was not able to find', options.SampleFolder
+    print 'Please try again with a correct/existing folder. Maybe choose', \
+           'one of the directories below...'
     os.system('tree -L 1 -d')
     print
     sys.exit(1)
 
+# Check for mandatory parameters
 if options.Delta is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Delta value in it.'
     print
     print 'Please enter a Delta value with the -d parameter'
     sys.exit(1)
-
 if options.Beta is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Beta value in it.'
     print
     print 'Please enter a Beta value with the -b parameter'
     sys.exit(1)
-
-if options.Range is None:
-    print 'Your command was "' + ' '.join(sys.argv) + '"'
-    print 'I cannot find a range to iterate in it.'
-    print
-    print 'Please enter a range you want to iterate over with the -r parameter'
-    sys.exit(1)
-
 if options.Distance is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Sample-Detector distance in it.'
@@ -126,7 +129,7 @@ if options.Distance is None:
     sys.exit(1)
 
 # Assemble Directory- and Samplenames and prepare all other parameters
-SampleName = os.path.basename(os.path.abspath(options.SampleFolder))
+SampleName = os.path.basename(options.SampleFolder)
 
 # Get RotationCenter from Logfile, or set it to 1280 if not found.
 if options.RotationCenter is None:
@@ -137,34 +140,33 @@ if options.RotationCenter is None:
     LogFile = open(LogFileLocation, 'r')
     # Go through all the lines in the logfile
     for line in LogFile:
-        '''
-        If there's a line and the first and second word are "Rotation" and
-        "center", then get the value after the :, strip it from all spaces and
-        convert string to number. Set this value to be the Rotationcenter
-        '''
+        # If there's a line and the first and second word are "Rotation" and
+        # "center", then get the value after the :, strip it from spaces and
+        # set the float of this value to be the Rotationcenter
         if len(line.split()) > 0:
-            if (line.split()[0] == 'Rotation' and line.split()[1] == 'center:'):
+            if (line.split()[0] == 'Rotation' and
+                line.split()[1] == 'center:'):
                 options.RotationCenter = float(line.split(':')[1].strip())
     print LogFileLocation, 'tells us that the rotation center is', \
         options.RotationCenter
     if options.RotationCenter is None:
         options.RotationCenter = 1280
         if options.Verbose:
-            print 'No Rotation center found in LogFile, setting it to', \
-                  options.RotationCenter
+            print 'No Rotation center found in', LogFileLocation
+            print 'Setting Rotation center to', options.RotationCenter
 
 # Constructing list of deltas and betas so we can iterate through them below
-Delta = ['%.2e' % (options.Delta * 10 ** i) for i in range(-options.Range,
+Delta = ['%.3e' % (options.Delta * 10 ** i) for i in range(-options.Range,
                                                 options.Range + 1)]
 
 # If the user wants to iterate through beta, make a list, otherwise just make a
 # one-element list
 if options.IterateBeta:
-    Beta = ['%.2e' % (options.Beta * 10 ** i) for i in range(-options.Range,
+    Beta = ['%.3e' % (options.Beta * 10 ** i) for i in range(-options.Range,
                                                   options.Range + 1)]
 else:
     Beta = []
-    Beta.append(options.Beta)
+    Beta.append('%.3e' % options.Beta)
 
 
 def generatesinograms(Folder, Delta, Beta, DetectorDistance=options.Distance,
@@ -175,9 +177,8 @@ def generatesinograms(Folder, Delta, Beta, DetectorDistance=options.Distance,
     the script is carried over as an optional input to this function, according
     to http://is.gd/ChFkUB
     '''
-    cmd = 'sinooff_tomcat_paganin.py', \
-        os.path.abspath(os.path.join(Folder, 'tif')), Delta, Beta, \
-        DetectorDistance
+    cmd = 'sinooff_tomcat_paganin.py', os.path.join(Folder, 'tif'), Delta, \
+        Beta, DetectorDistance
     if verbose:
         # The 'cmd' is mixed between int and str. Map every item to a string,
         # then join all the item with spaces
@@ -195,24 +196,30 @@ def reconstruct(Folder, Delta, Beta, DetectorDistance=options.Distance,
     the script are carried over as optional input to this function.
     '''
     cmd = 'gridrec -Z 0.5 -f parzen -c', RotCenter, '-D', \
-        os.path.abspath(os.path.join(Folder, 'sin')),  '-O', \
-        os.path.abspath(os.path.join(Folder, 'rec_' + str(Delta) + '_' +
-                                     str(Beta) + '_' +
-                                     str(DetectorDistance)))
+        os.path.join(Folder, 'sin'),  '-O', \
+        os.path.join(Folder, 'rec_' + str(Delta) + '_' + str(Beta) + '_' +
+                     str(DetectorDistance))
     if verbose:
         return ' '.join(map(str, cmd))
     else:
         return ' '.join(map(str, cmd)) + ' > /dev/null'
 
-#~ def movefolder
-
 Steps = len(Delta) * len(Beta)
 Counter = 0
 for d in Delta:
     for b in Beta:
+        # DEBUG
+        if not options.Test:
+            try:
+                os.mkdir(os.path.join(options.SampleFolder, 'sin'))
+                os.mkdir(os.path.join(options.SampleFolder, 'fltp'))
+            except:
+                pass
+        # DEBUG
         Counter += 1
-        print 20 * '-', str(Counter) + '/' + str(Steps), 20 * '-'
-        print 'Retrieving phase for a delta of', d, 'and a beta of', b
+        print
+        print 15 * '-', '|', str(Counter) + '/' + str(Steps),  '| delta', \
+            d, '| beta', b, '|', 15 * '-'
         if Counter == 1:
             print 'Generating Sinograms, corrected and filtered projections'
         else:
@@ -224,72 +231,89 @@ for d in Delta:
         if options.Test:
             if options.Verbose:
                 print generatesinograms(options.SampleFolder, d, b)
-                print
         else:
-            subprocess.call(generatesinograms(options.SampleFolder, d, b))
+            # If the sinogram command does not exit with 0, something wentf
+            # b0nkers. Inform the user about what to possibly do.
+            try:
+                print 'SINSINGIN'
+                print generatesinograms(options.SampleFolder, d, b)
+                print
+            except Exception, b0nkers:
+                print
+                print 'Sinogram generation failed with:', b0nkers
+                print
+                print 'I removed the "fltp" directory, you you can', \
+                    'probably just try again.'
+                try:
+                    shutil.rmtree(os.path.join(options.SampleFolder, 'fltp'))
+                except:
+                    'I was not able to remove the "fltp" folder, maybe you', \
+                    'need to do it yourself. If that does not work, you can', \
+                    'also delete the "cpr" folder and start from scratch.'
+                print
+                print 'If just retrying does not work, you probably need', \
+                    'to remove the corrected projections and cancel batch', \
+                    'jobs. Use'
+                print '    rm', os.path.join(options.SampleFolder, 'fltp'), \
+                    '-r'
+                print 'to delete the "fltp" and/or'
+                print '    rm', os.path.join(options.SampleFolder, 'cpr'), \
+                    '-r'
+                print 'to delete the "cpr" folder. Maybe you also need to', \
+                    'cancel batch jobs in the DicoClient. Start it with.'
+                print '   cd /usr/local/cluster/DiCoClient; java -jar', \
+                    'DiCoClient.jar'
+                print 'Use "lj ex a" to list all jobs and "cb number" to', \
+                    'cancel a certain batch job. With "exit" you get out of', \
+                    'the DiCoClient and "cd -" brings you back to where you', \
+                    'were'
+                sys.exit(1)
         if Counter == 1:
-            print
             print 'This will take a *long* time, especially for the first', \
                 'time'
         print 'Reconstructing Sinograms'
         if options.Test:
             if options.Verbose:
                 print reconstruct(options.SampleFolder, d, b)
-                print
         else:
             print 'DOES IT ALSO WORK WITHOUT THE mkdir OF THE REC FOLDER?'
             try:
-                os.mkdir(os.path.abspath(os.path.join(options.SampleFolder,
-                                                      'rec_' + str(Delta) +
-                                                      '_' + str(Beta) + '_' +
-                                                      str(options.Distance))))
-            except IOError:
+                os.mkdir(os.path.join(options.SampleFolder, 'rec_' + d + '_' +
+                                      b + '_' + str(options.Distance)))
+            except:
                 pass
-            subprocess.call(reconstruct(options.SampleFolder, d, b,))
+            try:
+                print 'RECRECREC'
+                print reconstruct(options.SampleFolder, d, b)
+                print
+            except Exception, b0nkers:
+                print
+                print 'Reconstruction failed with:', b0nkers
         # Move Sinograms from (automatically generated) 'sin'-folder to a
-        # folder with a nice name. And maybe use with a symlink if needed...
+        # folder with a nice name. This makes it possible to reuse them.
         if options.Verbose:
-            print 'Moving sinograms sin_' + str(d) + '_' + str(b) + '_' + \
-                str(options.Distance)
-            print
+            print 'Renaming sinograms to sin_' + str(d) + '_' + str(b) + \
+                '_' + str(options.Distance)
         if not options.Test:
-            shutil.move(os.path.abspath(os.path.join(options.SampleFolder,
-                                                     'sin')),
-                        os.path.abspath(os.path.join(options.SampleFolder,
-                                                     'sin_' + str(d) + '_' +
-                                                     str(b) + '_' +
-                                                     str(options.Distance))))
+            try:
+                shutil.move(os.path.join(options.SampleFolder, 'sin'),
+                            os.path.join(options.SampleFolder, 'sin_' +
+                                         str(d) + '_' + str(b) + '_' +
+                                         str(options.Distance)))
+            except IOError or OSError:
+                sys.exit('Could not rename sinogram folder')
         # Move filtered projections to a folder with a nice name.
         if options.Verbose:
-            print 'Moving filtered projections to fltp_' + str(d) + '_' + \
+            print 'Renaming filtered projections to fltp_' + str(d) + '_' + \
                 str(b) + '_' + str(options.Distance)
         if not options.Test:
-            shutil.move(os.path.abspath(os.path.join(options.SampleFolder,
-                                                     'fltp')),
-                        os.path.abspath(os.path.join(options.SampleFolder,
-                                                     'fltp_' + str(d) + '_' +
-                                                     str(b) + '_' +
-                                                     str(options.Distance))))
-
-        #~ if os.system(SinogramCommand) is not 0:
-            #~ print 'Could not generate sinograms, exiting'
-            #~ print
-            #~ print 'You should try to remove the fltp folder and try again.'
-            #~ print 'Use "rm ', \
-                #~ os.path.abspath(os.path.join(options.SampleFolder,
-                                #~ 'fltp')), '-r" to delete the stray fltp', \
-                #~ ' directory and try again.'
-            #~ print
-            #~ print 'If that does *not* work, you can also delete the cpr', \
-                #~ 'folder with "; rm ', \
-                #~ os.path.abspath(os.path.join(options.SampleFolder,
-                                             #~ 'cpr')), \
-                #~ '-r".'
-            #~ print 'Maybe you should cancel some batches in the DicoClient.'
-            #~ print '"cd /usr/local/cluster/DiCoClient"'
-            #~ print '"java -jar DiCoClient.jar"'
-            #~ print '"lj ex a" and "cb number" of the jobs belonging to you'
-            #~ sys.exit(1)
+            try:
+                shutil.move(os.path.join(options.SampleFolder, 'fltp'),
+                            os.path.join(options.SampleFolder, 'fltp_' +
+                                         str(d) + '_' + str(b) + '_' +
+                                         str(options.Distance)))
+            except IOError or OSError:
+                sys.exit('Could not rename folder with reconstructed files')
 
 if options.Test:
     print
@@ -297,45 +321,65 @@ if options.Test:
     print
     print 'Remove the "-t" flag from your command to actually perform what', \
         'you have asked for.'
+    if "cons-2" not in platform.node():
+        print 'If you are not running the script on "x02da-cons-2", the', \
+            'testing flag is set automatically, since none of the scripts', \
+            '(sinooff_tomcat_paganin.py and gridrec) are present on other', \
+            ' machines. You thus cannot remove it :)'
     print
 else:
-    print 'You now have the sinogram directories'
-    for d in Delta:
-        for b in Beta:
-            print '    *', os.path.abspath(os.path.join(options.SampleFolder,
-                                                        'sin_' + str(d) + '_' +
-                                                        str(b) + '_' +
-                                                        str(options.Distance)))
-    print 'the filtered projection directories'
-    for d in Delta:
-        for b in Beta:
-            print '    *', os.path.abspath(os.path.join(options.SampleFolder,
-                                                        'fltp_' + str(d) +
-                                                        '_' + str(b) + '_' +
-                                                        str(options.Distance)))
-    print 'and the reconstruction directories'
-    for d in Delta:
-        for b in Beta:
-            print '    *', os.path.abspath(os.path.join(options.SampleFolder,
-                                                        'rec_' + str(d) + '_' +
-                                                        str(b) + '_' +
-                                                        str(options.Distance)))
+    if options.Verbose:
+        print 'In', options.SampleFolder, 'you now have'
+        print 'the sinogram directories'
+        for d in Delta:
+            for b in Beta:
+                print '    *', \
+                    os.path.basename(os.path.join(options.SampleFolder,
+                                                  'sin_' + str(d) + '_' +
+                                                  str(b) + '_' +
+                                                  str(options.Distance)))
+        print 'the filtered projection directories'
+        for d in Delta:
+            for b in Beta:
+                print '    *', \
+                    os.path.basename(os.path.join(options.SampleFolder,
+                                                  'fltp_' + str(d) + '_' +
+                                                  str(b) + '_' +
+                                                  str(options.Distance)))
+        print 'and the reconstruction directories'
+        for d in Delta:
+            for b in Beta:
+                print '    *', \
+                    os.path.basename(os.path.join(options.SampleFolder,
+                                                  'rec_' + str(d) + '_' +
+                                                  str(b) + '_' +
+                                                  str(options.Distance)))
+
+# Save small bash script to open a set of images images in Fiji
+command = 'cd', options.SampleFolder, \
+    '\nfor i in `ls rec_*e-* -d`;', \
+    '\ndo echo looking at $i;', \
+    '\nfiji $i/*1001* -eval "rename(\\\"${i}\\\"); run(\\\"Enhance', \
+    'Contrast...\\\", \\\"saturated=0.4\\\"); run(\\\"Save\\\", \\\"save=' + \
+    options.SampleFolder + '\/${i}.tif\\\"); saveAs(\\\"Jpeg\\\", \\\"' + \
+    options.SampleFolder + '\/${i}.jpg\\\");";', \
+    '\ndone'
+command = ' '.join(command)
+commandfile = open(os.path.join(options.SampleFolder,
+                                'LookAtReconstruction.sh'), 'w')
+commandfile.write(command)
+commandfile.close()
+if not options.Test:
     print
-    print 'To look at a single slice of all the reconstructed values, you', \
-        'can use the command below.'
-    print 'This command opens up reconstruction 1001 from each different', \
-        'beta-value directory, enhances the contrast of this image and', \
-        'saves it to a tiff- and jpf-file in the current directory. The', \
-        'only thing you have to do is to close fiji', str(Steps), 'times.'
-    print '---'
-    print 'cd', os.path.abspath(options.SampleFolder)
-    print 'for i in `ls rec_*e-* -d`;'
-    print 'do echo looking at $i;'
-    print 'fiji $i/*1001* -eval "rename(\\\"${i}\\\");', \
-        'run(\\\"Enhance Contrast...\\\", \\\"saturated=0.4\\\");', \
-        'run(\\\"Save\\\", \\\"save=' +\
-        os.path.abspath(options.SampleFolder) + '\/${i}.tif\\\");', \
-        'saveAs(\\\"Jpeg\\\", \\\"' +\
-        os.path.abspath(options.SampleFolder) + '\/${i}.jpg\\\");";'
-    print 'done'
-    print '---'
+    print 'To look at slice 1001 of all the reconstructed values, you', \
+        'can use'
+    if options.Verbose:
+        print '---'
+        print command
+        print '---'
+        print 'or use'
+    print 'bash', os.path.join(options.SampleFolder,
+                                'LookAtReconstruction.sh')
+    if options.Verbose:
+        print 'and close Fiji', str(Steps), 'times, you will then have TIF', \
+            'and JPG images to look at.'
