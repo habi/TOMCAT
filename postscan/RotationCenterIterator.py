@@ -164,8 +164,8 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
     '''
 
     # Reconstruct with gridrec
-    print '|' + (i+1)*'=' + (len(RotationCenter)-(i+1))*'-' + '| ' +\
-        "%02d" % (i+1) + '/' + "%02d" % len(RotationCenter) + ', ' +\
+    print '|' + (i + 1) * '=' + (len(RotationCenter) - (i + 1)) * '-' +\
+        '| ' + "%02d" % (i + 1) + '/' + "%02d" % len(RotationCenter) + ', ' +\
         SampleName + str(Sinogram) + '.sin.DMP, ' + str(RotationCenter[i])
     # Call either 64bit or 32bit gridrec
     # platform.architecture[0] gives out '32bit' or '64bit', with [:-3] we
@@ -288,8 +288,8 @@ if options.RotationCenter is None:
 # Make a vector with the Rotationcenter varying from Rot-Range to Rot+Range in
 # 'Iteration' steps.
 RotationCenter = np.arange(
-    options.RotationCenter-options.Range,
-    options.RotationCenter+options.Range+options.Iteration,
+    options.RotationCenter - options.Range,
+    options.RotationCenter + options.Range + options.Iteration,
     options.Iteration)
 
 # If the user is not testing and we would reconstruct more than
