@@ -15,7 +15,8 @@ and plot it with this script
 from optparse import OptionParser
 import sys
 import os
-from pylab import *
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Use Pythons Optionparser to define and read the options, and also
 # give some help to the user
@@ -65,7 +66,7 @@ if os.path.exists(os.path.abspath(options.DataFile)) is not True:
         'somewhere.'
     print
     sys.exit(1)
-Data = loadtxt(options.DataFile, skiprows=2)
+Data = np.loadtxt(options.DataFile, skiprows=2)
 # Convert the ndarray to lists for simpler handling
 Energy = Data[:, 0].tolist()
 Delta = Data[:, 1].tolist()
