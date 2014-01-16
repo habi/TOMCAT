@@ -15,7 +15,8 @@ and plot it with this script
 from optparse import OptionParser
 import sys
 import os
-from pylab import *
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Use Pythons Optionparser to define and read the options, and also
 # give some help to the user
@@ -65,25 +66,11 @@ if os.path.exists(os.path.abspath(options.DataFile)) is not True:
         'somewhere.'
     print
     sys.exit(1)
-Data = loadtxt(options.DataFile, skiprows=2)
+Data = np.loadtxt(options.DataFile, skiprows=2)
 # Convert the ndarray to lists for simpler handling
 Energy = Data[:, 0].tolist()
 Delta = Data[:, 1].tolist()
 Beta = Data[:, 2].tolist()
-
-# Plot Delta and/or Beta
-plt.figure()
-if not options.Beta:
-    plt.loglog(Energy, Delta, 'g', label='Delta')
-if not options.Delta:
-    plt.loglog(Energy, Beta, 'b', label='Beta')
-if options.Delta:
-    plt.ylabel('Delta')
-if options.Beta:
-    plt.ylabel('Beta')
-if not options.Delta and not options.Beta:
-    plt.ylabel('Delta/Beta')
-PlotTitle = os.path.basename(options.DataFile)
 
 # Get the closest to the chosen energy and show values around that to the user.
 # http://stackoverflow.com/a/9706105/323100
@@ -111,6 +98,20 @@ CurrentDelta = Delta[Energy.index(ClosestEnergy)]
 CurrentBeta = Beta[Energy.index(ClosestEnergy)]
 print 'a Delta of', "%.4g" % CurrentDelta, 'and a Beta of',\
     "%.4g" % CurrentBeta
+
+# Plot Delta and/or Beta
+plt.figure()
+if not options.Beta:
+    plt.loglog(Energy, Delta, 'g', label='Delta')
+if not options.Delta:
+    plt.loglog(Energy, Beta, 'b', label='Beta')
+if options.Delta:
+    plt.ylabel('Delta')
+if options.Beta:
+    plt.ylabel('Beta')
+if not options.Delta and not options.Beta:
+    plt.ylabel('Delta/Beta')
+PlotTitle = os.path.basename(options.DataFile)
 
 # Plot the closest value found
 PlotTitle += '\nEnergy=' + str(round(ClosestEnergy) / 1000) + ' keV, Delta=' +\
@@ -141,5 +142,5 @@ if options.Save:
     print
     print 'Saved plot to',\
         os.path.splitext(os.path.abspath(options.DataFile))[0] + '.pdf'
-
-plt.show()
+else:
+    plt.show()
