@@ -26,7 +26,7 @@ cp /afs/psi.ch/user/h/haberthuer/Dev/postscan/PaganinIterator.py
 # 2013-10-08: Made script less chatty (in general), more informative where
 #             necessary and cleaned it up in general.
 # 2013-10-14: Iteration is now possible over delta and beta or only delta.
-# 2014-01-10: Implementing multiprocessor option, analogue to
+# 2014-01-10: Refactoring to start for multiprocessor abilities, analogue to
 #             RotationCenterIterator.py
 
 import sys
@@ -241,7 +241,7 @@ def generatesinograms(Folder, Delta, Beta,
         LogFile.write(str(Beta))
         LogFile.write(' | Sample-detector distance=')
         LogFile.write(str(DetectorDistance))
-        LogFile.write('\n=')
+        LogFile.write('\n')
         LogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S", time.localtime()))
         LogFile.write(': Calculating Sinograms with\n')
         LogFile.write(str(' '.join(map(str, cmd))))
