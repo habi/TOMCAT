@@ -238,7 +238,7 @@ DefaultParameters.append('--tifConversionType=0')
 # the user) actually makes sense, i.e is not in the first or last ten slices of
 # the ROI. If it is, suggest to reconstruct another slice. In the end, set the
 # ROI for reconstruction to be 'SlicesAround' slices around the chosen slice.
-SlicesAround = 5
+SlicesAround = 10
 if options.Slice == 0:  # evaluates to True if options.Slice is set to 0
     DefaultParameters.append('--steplines=50')
 elif not options.Slice:
@@ -260,11 +260,12 @@ elif not options.Slice == 0:
         str(Y_ROI[1] - options.Slice - SlicesAround))
     if options.Verbose:
         print 'To reconstruct', SlicesAround, \
-            'slices around slice', options.Slice, 'we cut the ROI from', \
-            options.Slice - Y_ROI[0] - SlicesAround, \
-            'from the start of the dataset at', Y_ROI[0], 'to', \
-            Y_ROI[1] - options.Slice - SlicesAround,\
-            'from the end of it at ' +  str(Y_ROI[1]) + '.'
+            'slices around slice', options.Slice, 'we cut the ROI'
+        print '    * from', options.Slice - Y_ROI[0] - SlicesAround, \
+            'from the start of the dataset at', Y_ROI[0]
+        print '    * to',  Y_ROI[1] - options.Slice - SlicesAround,\
+            'from the end of it at ' + str(Y_ROI[1]) + '.'
+    print
 
 # Inform user what the script is going to do and give him a change to
 # renegotiate
@@ -297,14 +298,12 @@ for b in Beta:
 print '\n    * at a sample-detector distance of', options.Distance, 'mm'
 print '    * resulting in', len(Delta) * len(Beta),\
     'different reconstructions'
-
-print
 # Ask the user if everything is correct, otherwise restart the selection
-answer = raw_input('Is this correct? [Y/n]:')
+answer = raw_input('---> Is this correct? [Y/n]:')
 # See if answer is Enter (not answer) yes or no (strtobool)
 if not answer or distutils.util.strtobool(answer):
     print "\nHey ho, let's go: http://youtu.be/c1BOsShTyng"
-    print
+    print 80 * '-'
 else:
     print 'Look at the help (' + sys.argv[0], '-h) and overwrite the', \
         'desired parameter with a commandline flag'
@@ -330,12 +329,11 @@ cprcommand.append('--scanparameters=' + str(options.NumProj) + ',' + \
 # Save it to a nicely named folder, depending if the user want te full set or
 # not
 if options.Slice:
-    cprcommand.append('--sinogramDirectory=' +
-                    os.path.join(options.SampleFolder, 'cpr_roi_' +
-                                str(options.Slice).zfill(4)))
+    cprcommand.append('-o ' + os.path.join(options.SampleFolder,
+                                           'cpr_roi_' +
+                                           str(options.Slice).zfill(4)))
 else:
-    cprcommand.append('--sinogramDirectory=' +
-                    os.path.join(options.SampleFolder, 'cpr'))
+    cprcommand.append('-o ' + os.path.join(options.SampleFolder, 'cpr'))
 # Do it with those files
 cprcommand.append(os.path.join(options.SampleFolder, 'tif'))
 
@@ -344,37 +342,45 @@ print 'Submitting the calculation of the corrected projections to the SGE', \
 if options.Verbose:
     print 'with:'
     print ' '.join(cprcommand)
-else:
-    print '\n'
-if options.Test:
-    print 10 * ' ', 'I am only testing...'
-else:
+print    
+if not options.Test:    
     calculatecpr = subprocess.Popen(cprcommand, stdout=subprocess.PIPE)
-    JobIDcpr = calculatecpr.stdout.readline().split()[2]
-    print 'Corrected projections submitted. Job ID', JobIDcpr
+    output, error = calculatecpr.communicate()
+    try:
+        JobIDcpr = int(output.split()[2])
+    except ValueError:
+        print 'I could not get a job ID from the SGE queue'
+        print 'Since I need one to correctly hold other jobs, I cannot', \
+            ' proceed!'
+        print 'This has happened before, generally, you can just call the', \
+            'exact same command again and it will work.'
+        print
+        sys.exit('Please retry!')
+    print 'Corrected projections submitted with Job ID', JobIDcpr
     # Write command to logfile
     with open(os.path.join(options.SampleFolder, 'PaganinIterator.log'),
                 'a') as PaganinLogFile:
-        PaganinLogFile.write('----------| ')
+        PaganinLogFile.write('---| ')
         PaganinLogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S",
                                            time.localtime()))
-        PaganinLogFile.write(' | Calculating corrected projections. Job ID ')
-        PaganinLogFile.write(JobIDcpr)
-        PaganinLogFile.write(' |----------\n')
+        PaganinLogFile.write(' | Calculating corrected projections, Job ID ')
+        PaganinLogFile.write(str(JobIDcpr))
+        PaganinLogFile.write(' |---\n')
         PaganinLogFile.write(' '.join(cprcommand))
         PaganinLogFile.write('\n')
 
 # Sleep a bit, so that the user has a feeling of stuff happening :)
-time.sleep(2)
+time.sleep(1)        
 
-# Calculate filtered projections
+# Calculate reconstructions for each delta and beta by submitting it to the SGE
+# queue with the correct commands.
 Steps = len(Delta) * len(Beta)
 Counter = 0
 for d in Delta:
     for b in Beta:
         Counter += 1
-        print 15 * '-', '|', str(Counter) + '/' + str(Steps),  '| delta', \
-            d, '| beta', b, '|', 15 * '-'
+        print 10 * '-', '|', str(Counter) + '/' + str(Steps),  '| delta', \
+            d, '| beta', b, '|', 26 * '-'
         reconstructioncommand = ['/usr/bin/prj2sinSGE']
         # Extending list with DefaultParameters, appending the rest
         reconstructioncommand.extend(DefaultParameters)
@@ -404,10 +410,10 @@ for d in Delta:
         if options.Test:
             reconstructioncommand.append('--hold=TESTING')
         else:
-            reconstructioncommand.append('--hold=' + JobIDcpr)
+            reconstructioncommand.append('--hold=' + str(JobIDcpr))
         # save the sinograms to a temporary folder
-        reconstructioncommand.append('--sinogramDirectory=' +
-                                     os.path.join(options.SampleFolder, 'tmp'))
+        #~ reconstructioncommand.append('-o ' + os.path.join(options.SampleFolder,
+                                                          #~ 'tmp'))
         # Do it with those files
         if options.Slice:
             reconstructioncommand.append(os.path.join(options.SampleFolder,
@@ -421,34 +427,31 @@ for d in Delta:
         if options.Verbose:
             print 'with:'
             print ' '.join(reconstructioncommand)
-        else:
-            print '\n'
-        if options.Test:
-            print 10 * ' ', 'I am only testing...'
-        else:
+        print
+        if not options.Test:
             reconstruct = subprocess.Popen(reconstructioncommand,
                                            stdout=subprocess.PIPE)
             JobIDrec = reconstruct.stdout.readline().split()[2]
-            print 'Reconstructions submitted. Job ID', JobIDrec
+            print 'Reconstructions submitted with Job ID', JobIDrec
             # Write command to logfile
             with open(os.path.join(options.SampleFolder,
                                     'PaganinIterator.log'),
                        'a') as PaganinLogFile:
-                PaganinLogFile.write('----------| ')
+                PaganinLogFile.write('------| ')
                 PaganinLogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S",
                                                    time.localtime()))
-                PaganinLogFile.write(' | Calculating reconstructions. Job ID ')
-                PaganinLogFile.write(JobIDrec)
-                PaganinLogFile.write(' |----------\n')
+                PaganinLogFile.write(' | Calculating reconstructions, Job ID ')
+                PaganinLogFile.write(str(JobIDrec))
+                PaganinLogFile.write(' |------\n')
                 PaganinLogFile.write(' '.join(reconstructioncommand))
                 PaganinLogFile.write('\n')
         # Sleep a bit, so that the user has a feeling of stuff happening :)
-        time.sleep(2)
-print
+        time.sleep(1)
+print 10 * '-', 'done submitting', 53 * '-'
 
 if options.Test:
     print
-    print 31 * ' ', 'I was only testing'
+    print 10 * ' ', 'I was only testing'
     print
     print 'Remove the "-t" flag from your command to actually perform what', \
         'you have asked for.'
@@ -457,33 +460,35 @@ if options.Test:
             'testing flag is set automatically, since none of the scripts', \
             '(sinooff_tomcat_paganin.py and gridrec) are present on other', \
             ' machines. You thus cannot remove it :)'
-    print
+    sys.exit('See you soon!')
 else:
-    if options.Verbose:
-        print 'In', options.SampleFolder, 'you now have'
-        print 'a directory with the logs from the SGE queue'
-        print '    *', os.path.basename(os.path.join(options.SampleFolder,
-                                                      'logs'))
-        print 'a directory with the corrected projections'
-        if options.Slice:
-            print '    *', \
-                os.path.basename(os.path.join(options.SampleFolder,
-                                            'cpr_roi_' +
-                                            str(options.Slice).zfill(4)))
-        else:
-            print '    *', \
-                os.path.basename(os.path.join(options.SampleFolder,
-                                            'cpr')            
-        print 'and the reconstruction directories'
-        for d in Delta:
-            for b in Beta:
-                print '    *', \
-                    os.path.basename(os.path.join(options.SampleFolder,
-                                                  'rec_DMP_' + str(d) + '_' +
-                                                  str(b) + '_' +
-                                                  str(options.Distance)))
+    print 'Once the SGE queue is done, you will have the following folders', \
+        'in', options.SampleFolder + ':'
+    print '    * a directory "' + \
+        os.path.basename(os.path.join(options.SampleFolder,'logs')) + \
+        '" with commands, logs and errors from the SGE queue'
+    if options.Slice:
+        print '    * a directory "' + \
+            os.path.basename(os.path.join(options.SampleFolder, 'cpr_roi_' +
+                             str(options.Slice).zfill(4))) + '"', 
+    else:
+        print '    * a directory "' + \
+            os.path.basename(os.path.join(options.SampleFolder, 'cpr')) + \
+            '"',
+    print 'containing the corrected projections'                
+    print '    * and these directories with reconstructed DMPs:'
+    for d in Delta:
+        for b in Beta:
+            print '        *', \
+                os.path.basename(os.path.join(options.SampleFolder,'rec_DMP_' +
+                                              str(d) + '_' + str(b) + '_' +
+                                              str(options.Distance)))
+    print 80 * '-'
 
     # Save small bash script to open a set of images images in Fiji
+    # Give a meaningful slice if the user selected the full set to reconstruct
+    if not options.Slice:
+        options.Slice = 1001
     command = 'cd', options.SampleFolder, \
         '\nfor i in `ls rec_*e-* -d`;', \
         '\ndo echo looking at $i;', \
@@ -499,7 +504,6 @@ else:
                'w') as CommandFile:
         CommandFile.write(command)
     if not options.Test:
-        print
         print 'To look at slice', options.Slice, 'of all the reconstructed',  \
             'values, you can use'
         if options.Verbose:
@@ -512,7 +516,10 @@ else:
         if options.Verbose:
             print 'and close Fiji', str(Steps), 'times, you will then have', \
                 'TIF and JPG images to look at.'
+    if options.Verbose:
+        print 80 * '-'
+        print 'Additionally, you have all the commands I executed written', \
+            ' to', os.path.join(options.SampleFolder, 'PaganinIterator.log')
 
-    print
-    print 'Additionally, you have all the commands I executed written to', \
-        os.path.join(options.SampleFolder, 'PaganinIterator.log')
+print 10 * '-', 'done with all you asked for', 41 * '-'
+print 'To look at the SGE queue, use the "qstat" command.'
