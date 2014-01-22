@@ -56,26 +56,32 @@ Parser.add_option('-b', '--Beta', dest='Beta', type='float',
 Parser.add_option('-z', dest='Distance', type='int',
                   help='Distance to the scintillator in mm. Mandatory.',
                   metavar=33)
-Parser.add_option('-r', '--range', dest='Range', default=3, type='int',
+Parser.add_option('-m', '--Magnitude', dest='Magnitude', default=3, type='int',
                   help='Orders of magnitude you want to iterate through. By '
                        'default the script iterates through %default orders '
                        'of magnitude of *only* delta. If you also want to '
                        'iterate through beta, you need to add the -i '
                        'parameter.',
                   metavar='2')
-Parser.add_option('-i', '--iteratebeta', dest='IterateBeta',
+Parser.add_option('-i', '--IterateBeta', dest='IterateBeta',
                   default=False, action='store_true',
                   help='Iterate over beta. Default: %default',
                   metavar=1)
-Parser.add_option('-c', '--center', dest='RotationCenter', type='float',
+Parser.add_option('-c', '--Rotationcenter', dest='RotationCenter',
+                  type='float',
                   help='RotationCenter for reconstructing the slices. '
                        'Default: Read from logfile',
                   metavar='1283.25')
-Parser.add_option('-s', '--slice', dest='Slice', type='int',
+Parser.add_option('-s', '--Slice', dest='Slice', type='int',
                   help='Slice to reconstruct. Default: Middle of camera ROI. '
                        'If you want to reconstruct the full dataset (actually '
                        'every 50th slice), enter 0.',
                   metavar='123')
+Parser.add_option('-a', '--Slicesaround', dest='SlicesAround', type='int',
+                  default=10,
+                  help='Slice to reconstruct around the chosen one (-s). '
+                       'Default: %default',
+                  metavar='14')
 Parser.add_option('--NumProj', dest='NumProj', type='int',
                   help='Number of projections. Default: read from Logfile')
 Parser.add_option('--NumDarks', dest='NumDarks', type='int',
@@ -84,15 +90,15 @@ Parser.add_option('--NumFlats', dest='NumFlats', type='int',
                   help='Number of flats. Default: read from Logfile')
 Parser.add_option('-e', '--Energy', dest='Energy', type='float',
                   help='Beam energy [kV]. Default: read from Logfile')
-Parser.add_option('-m', '--Magnification', dest='Magnification', type='float',
+Parser.add_option('-x', '--Magnification', dest='Magnification', type='float',
                   help='Magnification. Default: read from Logfile')
 Parser.add_option('-p', '--Pixelsize', dest='Pixelsize', type='float',
                   help='Actual pixel size [um]. Default: read from Logfile')
-Parser.add_option('-v', '--verbose', dest='Verbose',
+Parser.add_option('-v', '--Verbose', dest='Verbose',
                   default=False, action='store_true',
                   help='Be really chatty. Default: %default',
                   metavar=1)
-Parser.add_option('-t', '--test', dest='Test',
+Parser.add_option('-t', '--Test', dest='Test',
                   default=False, action='store_true',
                   help='Only do a test-run to see the details, do not '
                        'actually reconstruct the slices. Default: %default',
@@ -112,7 +118,7 @@ if options.SampleFolder is None:
     print sys.argv[0], ('-D /sls/X02DA/data/e12740/Data10/disk1/Sample_A_ '
                         '-d 3e-7 -r 3 -b 3e-10 -z 32')
     print
-    sys.exit(1)
+    sys.exit('Please retry!')
 else:
     options.SampleFolder = os.path.abspath(options.SampleFolder)
 
@@ -130,24 +136,24 @@ if not os.path.exists(options.SampleFolder):
            'one of the directories below...'
     os.system('tree -L 1 -d')
     print
-    sys.exit(1)
+    sys.exit('Please retry!')
 
 # Check for mandatory parameters
 if options.Delta is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Delta value in it.'
     print
-    sys.exit('Please enter a Delta value with the -d parameter')
+    sys.exit('Please enter a Delta value with the -d parameter.')
 if options.Beta is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Beta value in it.'
     print
-    sys.exit('Please enter a Beta value with the -b parameter')
+    sys.exit('Please enter a Beta value with the -b parameter.')
 if options.Distance is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Sample-Detector distance in it.'
     print
-    sys.exit('Please enter a distance with the -z parameter')
+    sys.exit('Please enter a distance with the -z parameter.')
 
 # Get the sample name from the folder
 SampleName = os.path.basename(options.SampleFolder)
@@ -202,14 +208,14 @@ for line in LogFile:
                 Y_ROI[1] = int(line.split(':')[1].split('-')[1])
 
 # Constructing list of deltas and betas so we can iterate through them below
-Delta = ['%.3e' % (options.Delta * 10 ** i) for i in range(-options.Range,
-                                                options.Range + 1)]
+Delta = ['%.3e' % (options.Delta * 10 ** i) for i in range(-options.Magnitude,
+                                                options.Magnitude + 1)]
 
 # If the user wants to iterate through beta, make a list, otherwise just make a
 # one-element list
 if options.IterateBeta:
-    Beta = ['%.3e' % (options.Beta * 10 ** i) for i in range(-options.Range,
-                                                  options.Range + 1)]
+    Beta = ['%.3e' % (options.Beta * 10 ** i) for i in range(-options.Magnitude,
+                                                  options.Magnitude + 1)]
 else:
     Beta = []
     Beta.append('%.3e' % options.Beta)
@@ -223,27 +229,21 @@ else:
 # we can reuse. These are 'create missing directories along the way'
 DefaultParameters = []
 DefaultParameters.append('--createMissing')
-# rotation center
-DefaultParameters.append('--centerOfRotation=' + str(options.RotationCenter))
-# filter,
-DefaultParameters.append('--filter=parzen')
-# zero padding.
-DefaultParameters.append('--zeroPadding=0.25')
 # Always write to DMP
 DefaultParameters.append('--tifConversionType=0')
 
 # If the user wants to reconstruct the full set, he/she set options.Slice to 0,
 # we then reconstruct every 50th sinogram. By default, we reconstruct some
-# slices around the middle of the ROI. Check if this slice (or the one given by
-# the user) actually makes sense, i.e is not in the first or last ten slices of
-# the ROI. If it is, suggest to reconstruct another slice. In the end, set the
-# ROI for reconstruction to be 'SlicesAround' slices around the chosen slice.
-SlicesAround = 10
+# slices around the middle of the ROI.
 if options.Slice == 0:  # evaluates to True if options.Slice is set to 0
     DefaultParameters.append('--steplines=50')
 elif not options.Slice:
     options.Slice = sum(Y_ROI) / len(Y_ROI)
 
+# Check if the default or selected slice actually makes sense, i.e is not in
+# the first or last ten slices of the ROI. If it is, suggest to reconstruct
+# another slice. In the end, set the ROI for reconstruction to be
+#'options.SlicesAround' slices around the chosen slice.
 if options.Slice - 10 < Y_ROI[0] and not options.Slice == 0:
     sys.exit(' '.join(['Your desired slice is in the first ten slices of', \
         'the dataset, please choose at least', str(Y_ROI[0] + 10), \
@@ -256,14 +256,14 @@ elif not options.Slice == 0:
     # ROI in projection. Left, right, upper, lower. It's not absolute numbers
     # but lines "cut" from the start and end :)
     DefaultParameters.append('--roiParameters=0,0,' + \
-        str(options.Slice - Y_ROI[0] - SlicesAround) + ',' + \
-        str(Y_ROI[1] - options.Slice - SlicesAround))
+        str(options.Slice - Y_ROI[0] - options.SlicesAround) + ',' + \
+        str(Y_ROI[1] - options.Slice - options.SlicesAround))
     if options.Verbose:
-        print 'To reconstruct', SlicesAround, \
+        print 'To reconstruct', options.SlicesAround, \
             'slices around slice', options.Slice, 'we cut the ROI'
-        print '    * from', options.Slice - Y_ROI[0] - SlicesAround, \
+        print '    * from', options.Slice - Y_ROI[0] - options.SlicesAround, \
             'from the start of the dataset at', Y_ROI[0]
-        print '    * to',  Y_ROI[1] - options.Slice - SlicesAround,\
+        print '    * to',  Y_ROI[1] - options.Slice - options.SlicesAround,\
             'from the end of it at ' + str(Y_ROI[1]) + '.'
     print
 
@@ -281,21 +281,24 @@ print '    * at a', options.Magnification, 'x magnification, resulting in', \
 print '    * the camera was set to a ROI of x=' + str(X_ROI[0]) + '-' + \
     str(X_ROI[1]), 'and y=' + str(Y_ROI[0]) + '-' + str(Y_ROI[1])
 print '    * and the rotation center is', '%0.2f' % options.RotationCenter
-print '\nI will'
+print
+print 'I will'
 if options.Slice:
-    print '    * reconstruct', str(SlicesAround), \
+    print '    * reconstruct', str(options.SlicesAround), \
         'slices above and below slice', options.Slice, '(roi=0,0,' + \
-            str(options.Slice - Y_ROI[0] - SlicesAround) + ',' + \
-            str(Y_ROI[1] - options.Slice - SlicesAround) + ')'
+            str(options.Slice - Y_ROI[0] - options.SlicesAround) + ',' + \
+            str(Y_ROI[1] - options.Slice - options.SlicesAround) + ')'
 else:
     print '    * reconstruct the full dataset'
 print '    * with delta(s) of',
 for d in Delta:
     print str(d) + ',',
-print '\n    * with beta(s) of',
+print
+print '    * with beta(s) of',
 for b in Beta:
     print str(b) + ',',
-print '\n    * at a sample-detector distance of', options.Distance, 'mm'
+print
+print '    * at a sample-detector distance of', options.Distance, 'mm'
 print '    * resulting in', len(Delta) * len(Beta),\
     'different reconstructions'
 # Ask the user if everything is correct, otherwise restart the selection
@@ -307,16 +310,17 @@ if not answer or distutils.util.strtobool(answer):
 else:
     print 'Look at the help (' + sys.argv[0], '-h) and overwrite the', \
         'desired parameter with a commandline flag'
-    sys.exit('\nHere It Goes Again: http://youtu.be/dTAAsCNK7RA')
+    print
+    sys.exit('Here It Goes Again: http://youtu.be/dTAAsCNK7RA')
 
 # At first we need to calculate the corrected projections, since we're gonna
 # use them for everything. Give it a distinctive job name, only calculate the
 # corrections and don't make sinograms, expect tif as input, give them a nice
 # prefix and save them to a distinctively named output directory
-cprcommand = ['/usr/bin/prj2sinSGE']
+cprcommand = ['prj2sinSGE']
 # Since the DefaultParameters is already a list, we don't append, but extend
 cprcommand.extend(DefaultParameters)
-# Give it a nice name
+# Give it a nice job name
 cprcommand.append('--jobname=cpr_' + SampleName + '_' + str(options.Slice))
 # Calculate corrected projections from TIFFs named so-so
 cprcommand.append('--correctionOnly')
@@ -326,7 +330,7 @@ cprcommand.append('--prefix=' + SampleName + '####.tif')
 # Numbers of projections, darks, flats, interflats and flat frequency
 cprcommand.append('--scanparameters=' + str(options.NumProj) + ',' + \
     str(options.NumDarks) + ',' + str(options.NumFlats) + ',0,0')
-# Save it to a nicely named folder, depending if the user want te full set or
+# Save it to a nicely named folder, depending if the user want the full set or
 # not
 if options.Slice:
     cprcommand.append('-o ' + os.path.join(options.SampleFolder,
@@ -342,18 +346,18 @@ print 'Submitting the calculation of the corrected projections to the SGE', \
 if options.Verbose:
     print 'with:'
     print ' '.join(cprcommand)
-print    
-if not options.Test:    
+print
+if not options.Test:
     calculatecpr = subprocess.Popen(cprcommand, stdout=subprocess.PIPE)
     output, error = calculatecpr.communicate()
     try:
         JobIDcpr = int(output.split()[2])
     except ValueError:
-        print 'I could not get a job ID from the SGE queue'
-        print 'Since I need one to correctly hold other jobs, I cannot', \
-            ' proceed!'
-        print 'This has happened before, generally, you can just call the', \
-            'exact same command again and it will work.'
+        print 'I could not get a job ID from the SGE queue.'
+        print 'Since I need one to correctly schedule the other jobs, I', \
+            'cannot proceed!'
+        print 'Generally, you can just call the exact same command again', \
+            'and it will work.'
         print
         sys.exit('Please retry!')
     print 'Corrected projections submitted with Job ID', JobIDcpr
@@ -370,10 +374,11 @@ if not options.Test:
         PaganinLogFile.write('\n')
 
 # Sleep a bit, so that the user has a feeling of stuff happening :)
-time.sleep(1)        
+time.sleep(1)
 
-# Calculate reconstructions for each delta and beta by submitting it to the SGE
-# queue with the correct commands.
+# Calculate filtered projections and reconstructions for each delta and beta
+# by submitting it to the SGE queue with the correct commands, waiting for each
+# other
 Steps = len(Delta) * len(Beta)
 Counter = 0
 for d in Delta:
@@ -381,9 +386,87 @@ for d in Delta:
         Counter += 1
         print 10 * '-', '|', str(Counter) + '/' + str(Steps),  '| delta', \
             d, '| beta', b, '|', 26 * '-'
-        reconstructioncommand = ['/usr/bin/prj2sinSGE']
+        fltpcommand = ['prj2sinSGE']
+        fltpcommand.append('--tifConversionType=0')
+        # Give it a nice job name
+        fltpcommand.append('--jobname=fltp_' + SampleName + '_' +
+                                     str(Counter) + '_' + str(d) + '_' +
+                                     str(b) + '_' + str(options.Distance))
+        # calculated from DMPs, which are corrected, named so-so
+        fltpcommand.append('--inputType=0')
+        fltpcommand.append('--correctionOnly')
+        fltpcommand.append('--correctionType=0')
+        fltpcommand.append('--prefix=' + SampleName + '####.cpr.DMP')
+        # Corrected projections don't have darks and flats anymore, only
+        # the original number of projections, corrected.
+        fltpcommand.append('--scanparameters=' +
+                                     str(options.NumProj) + ',0,0,0,0')
+        # give it the selected Paganin parameters
+        fltpcommand.append('--paganinFilterParams=' +
+                                     str(options.Energy) + ',' +
+                                     str(options.Pixelsize / 1e6) + ',' +
+                                     str(d) + ',' + str(b) + ',' +
+                                     str(options.Distance / 1e3))
+        # wait for the corrected projections to be done first
+        if options.Test:
+            fltpcommand.append('--hold=TESTING')
+        else:
+            fltpcommand.append('--hold=' + str(JobIDcpr))
+        if options.Slice:
+            # Save the files here
+            fltpcommand.append('-o ' +
+                               os.path.join(options.SampleFolder, 'fltp_' +
+                                            str(options.Slice).zfill(4) +
+                                            '_' + str(d) + '_' + str(b) +
+                                            '_' + str(options.Distance)))
+            # Do it with those files
+            fltpcommand.append(os.path.join(options.SampleFolder, 'cpr_roi_' +
+                                        str(options.Slice).zfill(4)))
+        else:
+            # Save the files here
+            fltpcommand.append('-o ' +
+                               os.path.join(options.SampleFolder, 'fltp_' +
+                                            str(d) + '_' + str(b) + '_' +
+                                            str(options.Distance)))
+            # Do it with those files
+            fltpcommand.append(os.path.join(options.SampleFolder, 'cpr'))
+        print 'Submitting the calculation of the filtered projections to', \
+            'the SGE queue',
+        if options.Verbose:
+            print 'with:'
+            print ' '.join(fltpcommand)
+        print
+        if not options.Test:
+            fltp = subprocess.Popen(fltpcommand,
+                                           stdout=subprocess.PIPE)
+            output, error = fltp.communicate()
+            JobIDfltp = int(output.split()[2])
+            print 'Filtered projections submitted with Job ID', JobIDfltp
+            # Write command to logfile
+            with open(os.path.join(options.SampleFolder,
+                                    'PaganinIterator.log'),
+                       'a') as PaganinLogFile:
+                PaganinLogFile.write('------| ')
+                PaganinLogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S",
+                                                   time.localtime()))
+                PaganinLogFile.write(' | Calculating filtered projections, ')
+                PaganinLogFile.write('Job ID ')
+                PaganinLogFile.write(str(JobIDfltp))
+                PaganinLogFile.write(' |------\n')
+                PaganinLogFile.write(' '.join(fltpcommand))
+                PaganinLogFile.write('\n')
+
+        # Sleep a bit, so that the user has a feeling of stuff happening :)
+        time.sleep(1)
+
+        reconstructioncommand = ['prj2sinSGE']
         # Extending list with DefaultParameters, appending the rest
         reconstructioncommand.extend(DefaultParameters)
+        # Use the center of rotation found above or input by the user
+        reconstructioncommand.append('--centerOfRotation=' + str(options.RotationCenter))
+        # Use parzen filter and minimal zero padding
+        reconstructioncommand.append('--filter=parzen')
+        reconstructioncommand.append('--zeroPadding=0.25')
         # Give it a nice job name
         reconstructioncommand.append('--jobname=rec_' + SampleName + '_' +
                                      str(Counter) + '_' + str(d) + '_' +
@@ -391,37 +474,46 @@ for d in Delta:
         # calculated from DMPs, which are corrected, named so-so
         reconstructioncommand.append('--inputType=0')
         reconstructioncommand.append('--correctionType=0')
-        reconstructioncommand.append('--prefix=' + SampleName + '####.cpr.DMP')
+        reconstructioncommand.append('--prefix=' + SampleName + '####.fltp.DMP')
         # Corrected projections don't have darks and flats anymore, only
         # the original number of projections, corrected.
         reconstructioncommand.append('--scanparameters=' +
                                      str(options.NumProj) + ',0,0,0,0')
-        # give it the selected Paganin parameters
-        reconstructioncommand.append('--paganinFilterParams=' +
-                                     str(options.Energy) + ',' +
-                                     str(options.Pixelsize / 1e6) + ',' +
-                                     str(d) + ',' + str(b) + ',' +
-                                     str(options.Distance / 1e3))
-        # Suffix the reconstruction folder like this and do everything (fltp,
-        # sin) on the nodes
-        reconstructioncommand.append('--reconstruct=' + str(d) + '_' +
-                                     str(b) + '_' + str(options.Distance))
-        # wait for the corrected projections to be done first
+        # Reconstruct with this suffix
+        reconstructioncommand.append('--reconstruct=' +
+                                     str(options.Slice).zfill(4) + '_' +
+                                     str(d) + '_' + str(b) + '_' +
+                                     str(options.Distance))
+        # wait for the filtered projections to be done first
         if options.Test:
             reconstructioncommand.append('--hold=TESTING')
         else:
-            reconstructioncommand.append('--hold=' + str(JobIDcpr))
-        # save the sinograms to a temporary folder
-        #~ reconstructioncommand.append('-o ' + os.path.join(options.SampleFolder,
-                                                          #~ 'tmp'))
-        # Do it with those files
+            reconstructioncommand.append('--hold=' + str(JobIDfltp))
+        # We don't save the sinograms, but SGE still needs an output directory
+        # to save an estimates.txt. Use the rec folder for this
         if options.Slice:
+            # Save the files here
+            reconstructioncommand.append('-o ' +
+                               os.path.join(options.SampleFolder, 'rec_DMP_' +
+                                            str(options.Slice).zfill(4) +
+                                            '_' + str(d) + '_' + str(b) +
+                                            '_' + str(options.Distance)))
+            # Do it with those files
             reconstructioncommand.append(os.path.join(options.SampleFolder,
-                                        'cpr_roi_' +
-                                        str(options.Slice).zfill(4)))
+                                                      'fltp_' + str(d) + '_' +
+                                                      str(b) + '_' +
+                                                      str(options.Distance)))
         else:
+            # Save the files here
+            reconstructioncommand.append('-o ' +
+                               os.path.join(options.SampleFolder, 'rec_DMP_' +
+                                            str(d) + '_' + str(b) + '_' +
+                                            str(options.Distance)))
+            # Do it with those files
             reconstructioncommand.append(os.path.join(options.SampleFolder,
-                                        'cpr'))
+                                                      'fltp_' + str(d) + '_' +
+                                                      str(b) + '_' +
+                                                      str(options.Distance)))
         print 'Submitting the calculation of the reconstructions to the', \
                 'SGE queue',
         if options.Verbose:
@@ -460,29 +552,54 @@ if options.Test:
             'testing flag is set automatically, since none of the scripts', \
             '(sinooff_tomcat_paganin.py and gridrec) are present on other', \
             ' machines. You thus cannot remove it :)'
-    sys.exit('See you soon!')
+    sys.exit('Please retry!')
 else:
     print 'Once the SGE queue is done, you will have the following folders', \
         'in', options.SampleFolder + ':'
     print '    * a directory "' + \
-        os.path.basename(os.path.join(options.SampleFolder,'logs')) + \
+        os.path.basename(os.path.join(options.SampleFolder, 'logs')) + \
         '" with commands, logs and errors from the SGE queue'
     if options.Slice:
         print '    * a directory "' + \
             os.path.basename(os.path.join(options.SampleFolder, 'cpr_roi_' +
-                             str(options.Slice).zfill(4))) + '"', 
+                             str(options.Slice).zfill(4))) + '"',
     else:
         print '    * a directory "' + \
             os.path.basename(os.path.join(options.SampleFolder, 'cpr')) + \
             '"',
-    print 'containing the corrected projections'                
+    print 'containing the corrected projections'
+    print '    * these directories with filtered projections:'
+    for d in Delta:
+        for b in Beta:
+            if options.Slice:
+                print '        *', \
+                    os.path.basename(os.path.join(options.SampleFolder,
+                                                  'fltp_' +
+                                                  str(options.Slice).zfill(4) +
+                                                  '_' + str(d) + '_' + str(b) +
+                                                  '_' + str(options.Distance)))
+            else:
+                print '        *', \
+                    os.path.basename(os.path.join(options.SampleFolder,
+                                                  'fltp_' + str(d) + '_' +
+                                                  str(b) + '_' +
+                                                  str(options.Distance)))
     print '    * and these directories with reconstructed DMPs:'
     for d in Delta:
         for b in Beta:
-            print '        *', \
-                os.path.basename(os.path.join(options.SampleFolder,'rec_DMP_' +
-                                              str(d) + '_' + str(b) + '_' +
-                                              str(options.Distance)))
+            if options.Slice:
+                print '        *', \
+                    os.path.basename(os.path.join(options.SampleFolder,
+                                                  'rec_DMP_' +
+                                                  str(options.Slice).zfill(4) +
+                                                  '_' + str(d) + '_' + str(b) +
+                                                  '_' + str(options.Distance)))
+            else:
+                print '        *', \
+                    os.path.basename(os.path.join(options.SampleFolder,
+                                                  'rec_DMP_' + str(d) + '_' +
+                                                  str(b) + '_' +
+                                                  str(options.Distance)))
     print 80 * '-'
 
     # Save small bash script to open a set of images images in Fiji
