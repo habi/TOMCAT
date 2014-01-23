@@ -256,12 +256,13 @@ elif not options.Slice == 0:
     # ROI in projection. Left, right, upper, lower. It's not absolute numbers
     # but lines "cut" from the start and end :)
     DefaultParameters.append('--roiParameters=0,0,' + \
-        str(options.Slice - Y_ROI[0] - options.SlicesAround) + ',' + \
+        str(options.Slice - Y_ROI[0] - options.SlicesAround - 1) + ',' + \
         str(Y_ROI[1] - options.Slice - options.SlicesAround))
     if options.Verbose:
         print 'To reconstruct', options.SlicesAround, \
             'slices around slice', options.Slice, 'we cut the ROI'
-        print '    * from', options.Slice - Y_ROI[0] - options.SlicesAround, \
+        print '    * from', \
+            options.Slice - Y_ROI[0] - options.SlicesAround - 1, \
             'from the start of the dataset at', Y_ROI[0]
         print '    * to',  Y_ROI[1] - options.Slice - options.SlicesAround,\
             'from the end of it at ' + str(Y_ROI[1]) + '.'
@@ -286,7 +287,7 @@ print 'I will'
 if options.Slice:
     print '    * reconstruct', str(options.SlicesAround), \
         'slices above and below slice', options.Slice, '(roi=0,0,' + \
-            str(options.Slice - Y_ROI[0] - options.SlicesAround) + ',' + \
+            str(options.Slice - Y_ROI[0] - options.SlicesAround - 1) + ',' + \
             str(Y_ROI[1] - options.Slice - options.SlicesAround) + ')'
 else:
     print '    * reconstruct the full dataset'
@@ -313,6 +314,16 @@ else:
     print
     sys.exit('Here It Goes Again: http://youtu.be/dTAAsCNK7RA')
 
+# Save what we do to a logfile
+with open(os.path.join(options.SampleFolder, 'PaganinIterator.log'),
+                'a') as PaganinLogFile:
+    PaganinLogFile.write(10 * '-')
+    PaganinLogFile.write(' | PaganinIterator.py command | ')
+    PaganinLogFile.write(38 * '-')
+    PaganinLogFile.write('\n')
+    PaganinLogFile.write(' '.join(sys.argv))
+    PaganinLogFile.write('\n')
+
 # At first we need to calculate the corrected projections, since we're gonna
 # use them for everything. Give it a distinctive job name, only calculate the
 # corrections and don't make sinograms, expect tif as input, give them a nice
@@ -321,7 +332,7 @@ cprcommand = ['prj2sinSGE']
 # Since the DefaultParameters is already a list, we don't append, but extend
 cprcommand.extend(DefaultParameters)
 # Give it a nice job name
-cprcommand.append('--jobname=cpr_' + SampleName + '_' + str(options.Slice))
+cprcommand.append('--jobname=cpr_' + SampleName + str(options.Slice))
 # Calculate corrected projections from TIFFs named so-so
 cprcommand.append('--correctionOnly')
 cprcommand.append('--correctionType=3')
@@ -334,19 +345,17 @@ cprcommand.append('--scanparameters=' + str(options.NumProj) + ',' + \
 # not
 if options.Slice:
     cprcommand.append('-o ' + os.path.join(options.SampleFolder,
-                                           'cpr_roi_' +
+                                           'cpr_' +
                                            str(options.Slice).zfill(4)))
 else:
     cprcommand.append('-o ' + os.path.join(options.SampleFolder, 'cpr'))
 # Do it with those files
 cprcommand.append(os.path.join(options.SampleFolder, 'tif'))
 
-print 'Submitting the calculation of the corrected projections to the SGE', \
-    'queue',
 if options.Verbose:
-    print 'with:'
+    print 'Submitting the calculation of the corrected projections to the', \
+    'SGE queue with:',
     print ' '.join(cprcommand)
-print
 if not options.Test:
     calculatecpr = subprocess.Popen(cprcommand, stdout=subprocess.PIPE)
     output, error = calculatecpr.communicate()
@@ -374,24 +383,29 @@ if not options.Test:
         PaganinLogFile.write('\n')
 
 # Sleep a bit, so that the user has a feeling of stuff happening :)
-time.sleep(1)
+time.sleep(0.5)
 
 # Calculate filtered projections and reconstructions for each delta and beta
 # by submitting it to the SGE queue with the correct commands, waiting for each
 # other
+print 80 * '-'
+print 'Submitting the calculation of the filtered projections and', \
+    'reconstructions for each of the combinations of delta and beta to the', \
+    'SGE queue.'
 Steps = len(Delta) * len(Beta)
-Counter = 0
+Counter = 0    
 for d in Delta:
     for b in Beta:
         Counter += 1
         print 10 * '-', '|', str(Counter) + '/' + str(Steps),  '| delta', \
             d, '| beta', b, '|', 26 * '-'
         fltpcommand = ['prj2sinSGE']
-        fltpcommand.append('--tifConversionType=0')
+        # Add default parameters
+        fltpcommand.extend(DefaultParameters)
         # Give it a nice job name
-        fltpcommand.append('--jobname=fltp_' + SampleName + '_' +
-                                     str(Counter) + '_' + str(d) + '_' +
-                                     str(b) + '_' + str(options.Distance))
+        fltpcommand.append('--jobname=fltp_' + SampleName + str(Counter) +
+                           '_' + str(d) + '_' + str(b) + '_' +
+                           str(options.Distance))
         # calculated from DMPs, which are corrected, named so-so
         fltpcommand.append('--inputType=0')
         fltpcommand.append('--correctionOnly')
@@ -420,7 +434,7 @@ for d in Delta:
                                             '_' + str(d) + '_' + str(b) +
                                             '_' + str(options.Distance)))
             # Do it with those files
-            fltpcommand.append(os.path.join(options.SampleFolder, 'cpr_roi_' +
+            fltpcommand.append(os.path.join(options.SampleFolder, 'cpr_' +
                                         str(options.Slice).zfill(4)))
         else:
             # Save the files here
@@ -430,12 +444,10 @@ for d in Delta:
                                             str(options.Distance)))
             # Do it with those files
             fltpcommand.append(os.path.join(options.SampleFolder, 'cpr'))
-        print 'Submitting the calculation of the filtered projections to', \
-            'the SGE queue',
         if options.Verbose:
-            print 'with:'
+            print 'Submitting the calculation of the filtered projections', \
+                'to the SGE queue with:',
             print ' '.join(fltpcommand)
-        print
         if not options.Test:
             fltp = subprocess.Popen(fltpcommand,
                                            stdout=subprocess.PIPE)
@@ -457,7 +469,7 @@ for d in Delta:
                 PaganinLogFile.write('\n')
 
         # Sleep a bit, so that the user has a feeling of stuff happening :)
-        time.sleep(1)
+        time.sleep(0.5)
 
         reconstructioncommand = ['prj2sinSGE']
         # Extending list with DefaultParameters, appending the rest
@@ -468,7 +480,7 @@ for d in Delta:
         reconstructioncommand.append('--filter=parzen')
         reconstructioncommand.append('--zeroPadding=0.25')
         # Give it a nice job name
-        reconstructioncommand.append('--jobname=rec_' + SampleName + '_' +
+        reconstructioncommand.append('--jobname=rec_' + SampleName +
                                      str(Counter) + '_' + str(d) + '_' +
                                      str(b) + '_' + str(options.Distance))
         # calculated from DMPs, which are corrected, named so-so
@@ -500,9 +512,10 @@ for d in Delta:
                                             '_' + str(options.Distance)))
             # Do it with those files
             reconstructioncommand.append(os.path.join(options.SampleFolder,
-                                                      'fltp_' + str(d) + '_' +
-                                                      str(b) + '_' +
-                                                      str(options.Distance)))
+                                                      'fltp_' +
+                                                      str(options.Slice).zfill(4) +
+                                                      '_' + str(d) + '_' + str(b) +
+                                                      '_' + str(options.Distance)))
         else:
             # Save the files here
             reconstructioncommand.append('-o ' +
@@ -514,12 +527,10 @@ for d in Delta:
                                                       'fltp_' + str(d) + '_' +
                                                       str(b) + '_' +
                                                       str(options.Distance)))
-        print 'Submitting the calculation of the reconstructions to the', \
-                'SGE queue',
         if options.Verbose:
-            print 'with:'
+            print 'Submitting the calculation of the reconstructions to', \
+                'the SGE queue with:'
             print ' '.join(reconstructioncommand)
-        print
         if not options.Test:
             reconstruct = subprocess.Popen(reconstructioncommand,
                                            stdout=subprocess.PIPE)
@@ -538,7 +549,7 @@ for d in Delta:
                 PaganinLogFile.write(' '.join(reconstructioncommand))
                 PaganinLogFile.write('\n')
         # Sleep a bit, so that the user has a feeling of stuff happening :)
-        time.sleep(1)
+        time.sleep(0.5)
 print 10 * '-', 'done submitting', 53 * '-'
 
 if options.Test:
@@ -561,7 +572,7 @@ else:
         '" with commands, logs and errors from the SGE queue'
     if options.Slice:
         print '    * a directory "' + \
-            os.path.basename(os.path.join(options.SampleFolder, 'cpr_roi_' +
+            os.path.basename(os.path.join(options.SampleFolder, 'cpr_' +
                              str(options.Slice).zfill(4))) + '"',
     else:
         print '    * a directory "' + \
