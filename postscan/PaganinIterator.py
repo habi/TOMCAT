@@ -617,10 +617,17 @@ else:
     # Give a meaningful slice if the user selected the full set to reconstruct
     if not options.Slice:
         options.Slice = 1001
+    """
+    DUE TO THE FACT THAT WE'RE ONLY CALCULATING A ROI, THE SLICES ARE NUMBERED
+    "WRONGLY" I.E. THEY ALWAYS START AT 1 AND GO TO 2*(options.SlicesAround +1)
+    INSTEAD OF CALLING THE SELECTED SLICE (str(options.Slice).zfill(4)), WE
+    THUS OPEN SLICE options.SlicesAround + 1 IN FIJI, WHICH - CONVENIENTLY - IS
+    THE MIDDLE ONE :)
+    """
     command = 'cd', options.SampleFolder, \
         '\nfor i in `ls rec_*e-* -d`;', \
         '\ndo echo looking at $i;', \
-        '\nfiji $i/*' + str(options.Slice).zfill(4) + '* -eval', \
+        '\nfiji $i/*' + str(options.SlicesAround + 1) + '* -eval', \
         '"rename(\\\"${i}\\\"); run(\\\"Enhance Contrast...\\\",', \
         '\\\"saturated=0.4\\\"); run(\\\"Save\\\", \\\"save=' + \
         options.SampleFolder + '\/${i}.tif\\\"); saveAs(\\\"Jpeg\\\", \\\"' + \
