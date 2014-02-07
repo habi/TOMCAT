@@ -36,13 +36,16 @@ parser.add_option('-b', '--Beta', dest='Beta',
                        'both delta and beta')
 parser.add_option('-s', '--Save', dest='Save',
                   default=False, action='store_true',
-                  help='Save plot as NAME.pdf in current directory.')
+                  help='Save plot as NAME.pdf in current directory (default: '
+                       '%default)')
 parser.add_option('-e', '--Energy', dest='Energy',
-                  type=float, default=20.,
-                  help='Energy [keV] you would like to know Delta and Beta')
+                  type=float, default=20., metavar=12.9,
+                  help='Energy [keV] you would like to know Delta and Beta '
+                       '(default: %default)')
 parser.add_option('-t', '--tomcat', dest='TOMCAT',
                   default=False, action='store_true',
-                  help='Plot only TOMCAT-range of Energies')
+                  help='Plot only TOMCAT-range of Energies (default: '
+                       '%default)')
 (options, args) = parser.parse_args()
 
 # show the help if no parameters are given

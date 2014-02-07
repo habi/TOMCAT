@@ -458,13 +458,13 @@ for d in Delta:
             with open(os.path.join(options.SampleFolder,
                                     'PaganinIterator.log'),
                        'a') as PaganinLogFile:
-                PaganinLogFile.write('------| ')
+                PaganinLogFile.write('----| ')
                 PaganinLogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S",
                                                    time.localtime()))
                 PaganinLogFile.write(' | Calculating filtered projections, ')
                 PaganinLogFile.write('Job ID ')
                 PaganinLogFile.write(str(JobIDfltp))
-                PaganinLogFile.write(' |------\n')
+                PaganinLogFile.write(' |---\n')
                 PaganinLogFile.write(' '.join(fltpcommand))
                 PaganinLogFile.write('\n')
 
