@@ -1479,7 +1479,8 @@ def fasttomoscan '{
    unix (sprintf ("rm %s ", LOGFILE))
    
    if (scan_int==0) {
-      unix (sprintf ("/usr/local/epms/bin/epmsupload -noImage -xml %s", DBFILE))
+      #unix (sprintf ("/usr/local/epms/bin/epmsupload -noImage -xml %s", DBFILE))
+      unix (sprintf ("curl -X PUT -H \"Content-Type: application/xml\" -d @\"%s\" http://x02da-www-1:8080/ch.psi.epms.web/rs/epms/upload", DBFILE))
       unix (sprintf ("cp %s %s", DBFILE,sampletifpath))
       unix (sprintf ("ln %s%s.xml %s", sampletifpath,fileprefix,logpath))
    } else {
