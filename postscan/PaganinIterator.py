@@ -70,7 +70,8 @@ Parser.add_option('-i', '--IterateBeta', dest='IterateBeta',
 Parser.add_option('-c', '--Rotationcenter', dest='RotationCenter',
                   type='float',
                   help='RotationCenter for reconstructing the slices. '
-                       'Default: Read from logfile',
+                       'Default: Read from logfile or - if not found there - '
+                       'half of the x-width of the camera ROI.',
                   metavar='1283.25')
 Parser.add_option('-s', '--Slice', dest='Slice', type='int',
                   help='Slice to reconstruct. Default: Middle of camera ROI. '
@@ -206,6 +207,11 @@ for line in LogFile:
             elif line.split('-')[0] == 'Y':
                 Y_ROI[0] = int(line.split(':')[1].split('-')[0])
                 Y_ROI[1] = int(line.split(':')[1].split('-')[1])
+
+# If we cannot find a rotation center in the logfile, save it to be half the
+# X_ROI
+if not options.RotationCenter:
+    options.RotationCenter = X_ROI[1] / 2
 
 # Constructing list of deltas and betas so we can iterate through them below
 Delta = ['%.3e' % (options.Delta * 10 ** i) for i in range(-options.Magnitude,
