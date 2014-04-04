@@ -252,11 +252,11 @@ except:
 
 # Get RotationCenter from Logfile, or set it to 1024 if not found.
 if options.RotationCenter is None:
-    if options.Verbose:
-        print 'Trying to get RotationCenter from', LogFileLocation
     LogFileLocation = os.path.join(os.path.dirname(os.path.abspath(
                                                    options.SinDir)),
                                    'tif', SampleName + '.log')
+    if options.Verbose:
+        print 'Trying to get RotationCenter from', LogFileLocation
     try:
         LogFile = open(LogFileLocation, 'r')
     except:
@@ -376,15 +376,13 @@ From prior runs there might be some reconstructed DMPs in the sinogram-
 folder. Delete these, as it might confuse Fiji/the user when loading all files
 at the end of the script
 """
-if len(glob.glob(os.path.abspath(options.SinDir) + '/' + SampleName +
-                 str(Sinogram) + '*.rec.DMP')) > 1:
+if len(glob.glob(os.path.abspath(options.SinDir) + '/*rec*')) > 1:
     deletecommand = 'rm ' + options.SinDir + '/' + SampleName + '*.rec.DMP'
     if options.Verbose:
         print 80 * '_'
         print
         print 'Deleting',\
-            len(glob.glob(os.path.abspath(options.SinDir) + '/' + SampleName +
-                          str(Sinogram) + '*.rec.DMP')),\
+            len(glob.glob(os.path.abspath(options.SinDir) + '/*rec*')),\
             '*.rec.DMP in "' + options.SinDir +\
             ', left from previous runs of this script with the command',\
             deletecommand
