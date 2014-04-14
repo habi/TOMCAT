@@ -1,14 +1,13 @@
-""" Multiscan Viewer
-# Kevin Mader (kevin.mader@gmail.com)
-#
-# Takes a given slice out of a folder of reconstructions and makes a folder filled with those images
-# Input parameter is slice to take, a negative number takes slices every input slices between 0 and 3000 to make multiple
-# In the sample directory run
-#    python ~/beamline-scripts/postscan/multiscanViewer.py 1601
+#!/usr/bin/python
+'''
+Multiscan Runner
+ Kevin Mader (kevin.mader@gmail.com)
 
-# To run for all samples
-# for cdir in *; do cd $cdir; python ~/beamline-scripts/postscan/multiscanViewer.py 1200; cd ..; done
-"""
+ To run 15 scans with a 10s delay between each scan execute the following command
+  ! Note SPEC must already be running and waiting for the go channel to be set
+    python ~/beamline-scripts/scan/multiscan.py 15 10
+
+'''
 from glob import glob
 from PIL import Image
 import os,sys
