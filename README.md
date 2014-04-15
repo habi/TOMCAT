@@ -7,6 +7,12 @@ X02DA consoles...
 ## prescan 
 These scripts are meant to be run before a scan is started and are used for alignment
 
+- ```CaptureRadiography.ijm``` 
+is a script which can be run in the ImageJ control for the camera to capture a series of images from the camera and save them to disk in a selected folder with a given pause betwen frames (useful for radiation damage / bubble creation studies or other such analyses). If exposure time is long this script will not take that into account and just have multiple copies of the same image. This is much less performant than the camera server.
+- ```RadiographyAsStack.ijm``` 
+is a script which can be run in the ImageJ control for the camera to capture a series of images from the camera and save them inside an ImageJ stack so they can be previewed immediately. This is limited by available memory in ImageJ.
+
+
 ## scan
 These are scanning macros for use with spec and accompanying bash and python scripts for running more complicated scans
 
