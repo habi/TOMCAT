@@ -669,10 +669,10 @@
             fprintf (DBFILE, "<parameter name=\"Delay time\" unit=\"ms\">%d</parameter>\n",DELAY_START)
 	 }     
 	 if (SHUT=="IOC-Ctrl") {
-            fprintf (LOGFILE, "Millisecond shutter [ms]    : not used\n")
+            fprintf (LOGFILE, "Millisecond shutter         : not used\n")
             fprintf (DBFILE, "<parameter name=\"Millisecond shutter\">not used</parameter>\n")     
 	 } else {
-            fprintf (LOGFILE, "Millisecond shutter [ms]    : used\n")
+            fprintf (LOGFILE, "Millisecond shutter         : used\n")
             fprintf (DBFILE, "<parameter name=\"Millisecond shutter\">used</parameter>\n") 
 	 }      
          fprintf (LOGFILE, "X-ROI                       : %d - %d\n",ccdXb,ccdXe)
@@ -1067,7 +1067,7 @@ def fasttomoscan '{
          
     #Switching off microscope NSC motors status request; 13-Nov-2006/ais
     epics_put("X02DA-ES1-MS1:ROTstsSeq.SCAN","Passive",MAX_TIMEOUT_SOFT_CH)
-    epics_put("X02DA-ES1-MS1:FOCstsSeq.SCAN","Passive",MAX_TIMEOUT_SOFT_CH)
+    #epics_put("X02DA-ES1-MS1:FOCstsSeq.SCAN","Passive",MAX_TIMEOUT_SOFT_CH)
 
     deltarot=rotymax-rotymin
 
@@ -1453,7 +1453,7 @@ def fasttomoscan '{
     
    #Switching on microscope NSC motors status request; 13-Nov-2006/ais
    epics_put("X02DA-ES1-MS1:ROTstsSeq.SCAN",".5 second",MAX_TIMEOUT_SOFT_CH)
-   epics_put("X02DA-ES1-MS1:FOCstsSeq.SCAN",".5 second",MAX_TIMEOUT_SOFT_CH)
+   #epics_put("X02DA-ES1-MS1:FOCstsSeq.SCAN",".5 second",MAX_TIMEOUT_SOFT_CH)
  
    p "TOMOGRAPHIC SCAN FINISHED"
    fprintf (LOGFILE, "TOMOGRAPHIC SCAN FINISHED at %s \n",date())
