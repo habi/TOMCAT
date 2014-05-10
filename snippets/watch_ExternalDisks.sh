@@ -1,1 +1,1 @@
-watch -n 300 "df -h /dev/sd?1"
+watch -n 1800 "df -h /dev/sd?1"
