@@ -1,0 +1,3 @@
+[submodule "postscan/grecoman"]
+	path = postscan/grecoman
+	url = https://github.com/gnudo/grecoman.git
