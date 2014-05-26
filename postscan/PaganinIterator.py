@@ -99,6 +99,10 @@ Parser.add_option('-v', '--Verbose', dest='Verbose',
                   default=False, action='store_true',
                   help='Be really chatty. Default: %default',
                   metavar=1)
+Parser.add_option('-j', '--Waitjobname', dest='Waitjobname',
+                  default=False, action='store_true',
+                  help='Wait for jobnames instead of job-ids. Default: %default',
+                  metavar=1)
 Parser.add_option('-t', '--Test', dest='Test',
                   default=False, action='store_true',
                   help='Only do a test-run to see the details, do not '
@@ -338,7 +342,8 @@ cprcommand = ['prj2sinSGE']
 # Since the DefaultParameters is already a list, we don't append, but extend
 cprcommand.extend(DefaultParameters)
 # Give it a nice job name
-cprcommand.append('--jobname=cpr_' + SampleName + str(options.Slice))
+JobNameCpr='cpr_' + SampleName + str(options.Slice)
+cprcommand.append('--jobname='+JobNameCpr)
 # Calculate corrected projections from TIFFs named so-so
 cprcommand.append('--correctionOnly')
 cprcommand.append('--correctionType=3')
@@ -409,9 +414,8 @@ for d in Delta:
         # Add default parameters
         fltpcommand.extend(DefaultParameters)
         # Give it a nice job name
-        fltpcommand.append('--jobname=fltp_' + SampleName + str(Counter) +
-                           '_' + str(d) + '_' + str(b) + '_' +
-                           str(options.Distance))
+        JobNameFltp='fltp_' + SampleName + str(Counter) + '_' + str(d) + '_' + str(b) + '_' +str(options.Distance)
+        fltpcommand.append('--jobname='+JobNameFltp)
         # calculated from DMPs, which are corrected, named so-so
         fltpcommand.append('--inputType=0')
         fltpcommand.append('--correctionOnly')
@@ -430,7 +434,9 @@ for d in Delta:
         # wait for the corrected projections to be done first
         if options.Test:
             fltpcommand.append('--hold=TESTING')
-        else:
+        elif options.Waitjobname:
+            fltpcommand.append('--hold=' + JobNameCpr)
+	else:
             fltpcommand.append('--hold=' + str(JobIDcpr))
         if options.Slice:
             # Save the files here
@@ -486,9 +492,8 @@ for d in Delta:
         reconstructioncommand.append('--filter=parzen')
         reconstructioncommand.append('--zeroPadding=0.25')
         # Give it a nice job name
-        reconstructioncommand.append('--jobname=rec_' + SampleName +
-                                     str(Counter) + '_' + str(d) + '_' +
-                                     str(b) + '_' + str(options.Distance))
+        JobNameRecon='rec_' + SampleName +str(Counter) + '_' + str(d) + '_' +str(b) + '_' + str(options.Distance)
+        reconstructioncommand.append('--jobname='+JobNameRecon)
         # calculated from DMPs, which are corrected, named so-so
         reconstructioncommand.append('--inputType=0')
         reconstructioncommand.append('--correctionType=0')
@@ -505,6 +510,8 @@ for d in Delta:
         # wait for the filtered projections to be done first
         if options.Test:
             reconstructioncommand.append('--hold=TESTING')
+        elif options.Waitjobname:
+            reconstructioncommand.append('--hold=' + JobNameFltp)
         else:
             reconstructioncommand.append('--hold=' + str(JobIDfltp))
         # We don't save the sinograms, but SGE still needs an output directory
