@@ -117,7 +117,7 @@ if options.SampleFolder is None:
         '3e-10.'
     print
     print sys.argv[0], ('-D /sls/X02DA/data/e12740/Data10/disk1/Sample_A_ '
-                        '-d 3e-7 -r 3 -b 3e-10 -z 32')
+                        '-d 3e-7 -m 3 -b 3e-10 -z 32')
     print
     sys.exit('Please retry!')
 else:
@@ -399,7 +399,7 @@ print 'Submitting the calculation of the filtered projections and', \
     'reconstructions for each of the combinations of delta and beta to the', \
     'SGE queue.'
 Steps = len(Delta) * len(Beta)
-Counter = 0    
+Counter = 0
 for d in Delta:
     for b in Beta:
         Counter += 1
