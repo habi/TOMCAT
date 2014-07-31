@@ -13,7 +13,9 @@ chmod 0777 /work/sls/bin/PaganinIterator.py
 on SLSLc to move it to /work/sls/bin to make it available for all users.
 Or do it continuously for testing
 ---
-watch -n 3 "rm /work/sls/bin/PaganinIterator.py;cp /afs/psi.ch/user/h/haberthuer/Dev/postscan/PaganinIterator.py /work/sls/bin/;chmod 0777 /work/sls/bin/PaganinIterator.py"
+watch -n 3 "rm /work/sls/bin/PaganinIterator.py;cp
+    /afs/psi.ch/user/h/haberthuer/Dev/postscan/PaganinIterator.py
+    /work/sls/bin/;chmod 0777 /work/sls/bin/PaganinIterator.py"
 ---
 '''
 
@@ -98,10 +100,6 @@ Parser.add_option('-p', '--Pixelsize', dest='Pixelsize', type='float',
 Parser.add_option('-v', '--Verbose', dest='Verbose',
                   default=False, action='store_true',
                   help='Be really chatty. Default: %default',
-                  metavar=1)
-Parser.add_option('-j', '--Waitjobname', dest='Waitjobname',
-                  default=False, action='store_true',
-                  help='Wait for jobnames instead of job-ids. Default: %default',
                   metavar=1)
 Parser.add_option('-t', '--Test', dest='Test',
                   default=False, action='store_true',
@@ -224,8 +222,8 @@ Delta = ['%.3e' % (options.Delta * 10 ** i) for i in range(-options.Magnitude,
 # If the user wants to iterate through beta, make a list, otherwise just make a
 # one-element list
 if options.IterateBeta:
-    Beta = ['%.3e' % (options.Beta * 10 ** i) for i in range(-options.Magnitude,
-                                                  options.Magnitude + 1)]
+    Beta = ['%.3e' % (options.Beta * 10 ** i)
+            for i in range(-options.Magnitude, options.Magnitude + 1)]
 else:
     Beta = []
     Beta.append('%.3e' % options.Beta)
@@ -342,8 +340,8 @@ cprcommand = ['prj2sinSGE']
 # Since the DefaultParameters is already a list, we don't append, but extend
 cprcommand.extend(DefaultParameters)
 # Give it a nice job name
-JobNameCpr='cpr_' + SampleName + str(options.Slice)
-cprcommand.append('--jobname='+JobNameCpr)
+JobNameCpr = 'cpr_' + SampleName + str(options.Slice)
+cprcommand.append('--jobname=' + JobNameCpr)
 # Calculate corrected projections from TIFFs named so-so
 cprcommand.append('--correctionOnly')
 cprcommand.append('--correctionType=3')
@@ -370,25 +368,15 @@ if options.Verbose:
 if not options.Test:
     calculatecpr = subprocess.Popen(cprcommand, stdout=subprocess.PIPE)
     output, error = calculatecpr.communicate()
-    try:
-        JobIDcpr = int(output.split()[2])
-    except ValueError:
-        print 'I could not get a job ID from the SGE queue.'
-        print 'Since I need one to correctly schedule the other jobs, I', \
-            'cannot proceed!'
-        print 'Generally, you can just call the exact same command again', \
-            'and it will work.'
-        print
-        sys.exit('Please retry!')
-    print 'Corrected projections submitted with Job ID', JobIDcpr
+    print 'Corrected projections submitted with Job name', JobNameCpr
     # Write command to logfile
     with open(os.path.join(options.SampleFolder, 'PaganinIterator.log'),
                 'a') as PaganinLogFile:
         PaganinLogFile.write('---| ')
         PaganinLogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S",
                                            time.localtime()))
-        PaganinLogFile.write(' | Calculating corrected projections, Job ID ')
-        PaganinLogFile.write(str(JobIDcpr))
+        PaganinLogFile.write(' | Calculating corrected projections, Job name ')
+        PaganinLogFile.write(str(JobNameCpr))
         PaganinLogFile.write(' |---\n')
         PaganinLogFile.write(' '.join(cprcommand))
         PaganinLogFile.write('\n')
@@ -414,8 +402,9 @@ for d in Delta:
         # Add default parameters
         fltpcommand.extend(DefaultParameters)
         # Give it a nice job name
-        JobNameFltp='fltp_' + SampleName + str(Counter) + '_' + str(d) + '_' + str(b) + '_' +str(options.Distance)
-        fltpcommand.append('--jobname='+JobNameFltp)
+        JobNameFltp = 'fltp_' + SampleName + str(Counter) + '_' + str(d) + \
+            '_' + str(b) + '_' + str(options.Distance)
+        fltpcommand.append('--jobname=' + JobNameFltp)
         # calculated from DMPs, which are corrected, named so-so
         fltpcommand.append('--inputType=0')
         fltpcommand.append('--correctionOnly')
@@ -434,10 +423,8 @@ for d in Delta:
         # wait for the corrected projections to be done first
         if options.Test:
             fltpcommand.append('--hold=TESTING')
-        elif options.Waitjobname:
+        else:
             fltpcommand.append('--hold=' + JobNameCpr)
-	else:
-            fltpcommand.append('--hold=' + str(JobIDcpr))
         if options.Slice:
             # Save the files here
             fltpcommand.append('-o ' +
@@ -464,8 +451,7 @@ for d in Delta:
             fltp = subprocess.Popen(fltpcommand,
                                            stdout=subprocess.PIPE)
             output, error = fltp.communicate()
-            JobIDfltp = int(output.split()[2])
-            print 'Filtered projections submitted with Job ID', JobIDfltp
+            print 'Filtered projections submitted with Job name', JobNameFltp
             # Write command to logfile
             with open(os.path.join(options.SampleFolder,
                                     'PaganinIterator.log'),
@@ -474,8 +460,8 @@ for d in Delta:
                 PaganinLogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S",
                                                    time.localtime()))
                 PaganinLogFile.write(' | Calculating filtered projections, ')
-                PaganinLogFile.write('Job ID ')
-                PaganinLogFile.write(str(JobIDfltp))
+                PaganinLogFile.write('Job name ')
+                PaganinLogFile.write(str(JobNameFltp))
                 PaganinLogFile.write(' |---\n')
                 PaganinLogFile.write(' '.join(fltpcommand))
                 PaganinLogFile.write('\n')
@@ -487,17 +473,20 @@ for d in Delta:
         # Extending list with DefaultParameters, appending the rest
         reconstructioncommand.extend(DefaultParameters)
         # Use the center of rotation found above or input by the user
-        reconstructioncommand.append('--centerOfRotation=' + str(options.RotationCenter))
+        reconstructioncommand.append('--centerOfRotation=' +
+                                     str(options.RotationCenter))
         # Use parzen filter and minimal zero padding
         reconstructioncommand.append('--filter=parzen')
         reconstructioncommand.append('--zeroPadding=0.25')
         # Give it a nice job name
-        JobNameRecon='rec_' + SampleName +str(Counter) + '_' + str(d) + '_' +str(b) + '_' + str(options.Distance)
-        reconstructioncommand.append('--jobname='+JobNameRecon)
+        JobNameRecon = 'rec_' + SampleName + str(Counter) + '_' + str(d) + \
+            '_' + str(b) + '_' + str(options.Distance)
+        reconstructioncommand.append('--jobname=' + JobNameRecon)
         # calculated from DMPs, which are corrected, named so-so
         reconstructioncommand.append('--inputType=0')
         reconstructioncommand.append('--correctionType=0')
-        reconstructioncommand.append('--prefix=' + SampleName + '####.fltp.DMP')
+        reconstructioncommand.append('--prefix=' + SampleName +
+                                     '####.fltp.DMP')
         # Corrected projections don't have darks and flats anymore, only
         # the original number of projections, corrected.
         reconstructioncommand.append('--scanparameters=' +
@@ -510,10 +499,8 @@ for d in Delta:
         # wait for the filtered projections to be done first
         if options.Test:
             reconstructioncommand.append('--hold=TESTING')
-        elif options.Waitjobname:
-            reconstructioncommand.append('--hold=' + JobNameFltp)
         else:
-            reconstructioncommand.append('--hold=' + str(JobIDfltp))
+            reconstructioncommand.append('--hold=' + JobNameFltp)
         # We don't save the sinograms, but SGE still needs an output directory
         # to save an estimates.txt. Use the rec folder for this
         if options.Slice:
@@ -527,8 +514,10 @@ for d in Delta:
             reconstructioncommand.append(os.path.join(options.SampleFolder,
                                                       'fltp_' +
                                                       str(options.Slice).zfill(4) +
-                                                      '_' + str(d) + '_' + str(b) +
-                                                      '_' + str(options.Distance)))
+                                                      '_' + str(d) + '_' +
+                                                      str(b) +
+                                                      '_' +
+                                                      str(options.Distance)))
         else:
             # Save the files here
             reconstructioncommand.append('-o ' +
@@ -547,8 +536,7 @@ for d in Delta:
         if not options.Test:
             reconstruct = subprocess.Popen(reconstructioncommand,
                                            stdout=subprocess.PIPE)
-            JobIDrec = reconstruct.stdout.readline().split()[2]
-            print 'Reconstructions submitted with Job ID', JobIDrec
+            print 'Reconstructions submitted with Job name', JobNameRecon
             # Write command to logfile
             with open(os.path.join(options.SampleFolder,
                                     'PaganinIterator.log'),
@@ -556,12 +544,12 @@ for d in Delta:
                 PaganinLogFile.write('------| ')
                 PaganinLogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S",
                                                    time.localtime()))
-                PaganinLogFile.write(' | Calculating reconstructions, Job ID ')
-                PaganinLogFile.write(str(JobIDrec))
+                PaganinLogFile.write(' | Calculating reconstructions, Job name ')
+                PaganinLogFile.write(str(JobNameRecon))
                 PaganinLogFile.write(' |------\n')
                 PaganinLogFile.write(' '.join(reconstructioncommand))
                 PaganinLogFile.write('\n')
-        # Sleep a bit, so that the user has a feeling of stuff happening :)
+        # Sleep a bit, so that the user thinks we're working hard :)
         time.sleep(0.5)
 print 10 * '-', 'done submitting', 53 * '-'
 
