@@ -381,8 +381,9 @@ if not options.Test:
         PaganinLogFile.write(' '.join(cprcommand))
         PaganinLogFile.write('\n')
 
-# Sleep a bit, so that the user has a feeling of stuff happening :)
-time.sleep(0.5)
+# Sleep some seconds to let the job register with the queue
+print 'Waiting some seconds to let the job register at the SGE queue'
+time.sleep(5)
 
 # Calculate filtered projections and reconstructions for each delta and beta
 # by submitting it to the SGE queue with the correct commands, waiting for each
@@ -445,8 +446,9 @@ for d in Delta:
             fltpcommand.append(os.path.join(options.SampleFolder, 'cpr'))
         if options.Verbose:
             print 'Submitting the calculation of the filtered projections', \
-                'to the SGE queue with:',
+                'to the SGE queue with:'
             print ' '.join(fltpcommand)
+            print
         if not options.Test:
             fltp = subprocess.Popen(fltpcommand,
                                            stdout=subprocess.PIPE)
