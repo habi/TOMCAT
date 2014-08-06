@@ -7,14 +7,14 @@ Very loosely based on Peter Modreggers 'pags' bash script
 Use
 ---
 rm /work/sls/bin/PaganinIterator.py
-cp /afs/psi.ch/user/h/haberthuer/Dev/postscan/PaganinIterator.py /work/sls/bin/
+cp ~/Dev/TOMCAT-beamline-scripts/postscan/PaganinIterator.py /work/sls/bin/
 chmod 0777 /work/sls/bin/PaganinIterator.py
 ---
 on SLSLc to move it to /work/sls/bin to make it available for all users.
 Or do it continuously for testing
 ---
 watch -n 3 "rm /work/sls/bin/PaganinIterator.py;cp
-    /afs/psi.ch/user/h/haberthuer/Dev/postscan/PaganinIterator.py
+    ~/Dev/TOMCAT-beamline-scripts/postscan/PaganinIterator.py
     /work/sls/bin/;chmod 0777 /work/sls/bin/PaganinIterator.py"
 ---
 '''
@@ -28,6 +28,7 @@ watch -n 3 "rm /work/sls/bin/PaganinIterator.py;cp
 # 2013-10-14: Iteration is now possible over delta and beta or only delta.
 # 2014-01-10: Refactoring
 # 2014-01-16: Adapting it to the 'new pipeline' using the SUN grid engine
+# 2014-08-06: Making 'waitjobname' (by Kevin) default option
 
 import sys
 import os
@@ -37,6 +38,19 @@ import shutil
 import platform
 import time
 import distutils.util
+import logging
+
+# Enable bold and colorful output on the command line (http://is.gd/HCaDv9)
+def bold(msg):
+    return u'\033[1m%s\033[0m' % msg
+
+
+def color(string):
+    # in the original link, the color is configurable as:
+    # return "\033[" + this_color + "m" + string + "\033[0m"
+    # but we just use purple
+    return "\033[35m" + string + "\033[0m"
+
 
 # clear the commandline
 os.system('clear')
@@ -190,7 +204,6 @@ for line in LogFile:
             if not options.NumFlats:
                 options.NumFlats = int(line.split(':')[1])
         # Beam Energy
-        # Beam Energy
         elif (line.split()[0] == 'Beam' and line.split()[1] == 'energy'):
             if not options.Energy:
                 options.Energy = float(line.split(':')[1])
@@ -228,16 +241,12 @@ else:
     Beta = []
     Beta.append('%.3e' % options.Beta)
 
-# With the Sun Grid Engine (SGE) we don't need to follow the 'cpr', 'fltp',
-# 'sin', 'rec' religously. We can split the jobs with the adapted command from
-# 'prj2sinSGE' (which should be called 'doeverytingTOMCAT') and just let the
-# jobs afterward wait on the finish of the predecessing job.
-
 # Certain parameters are valid for everything, thus we write them into a string
-# we can reuse. These are 'create missing directories along the way'
+# we can reuse.
 DefaultParameters = []
+# We always want to create missing directories along the way
 DefaultParameters.append('--createMissing')
-# Always write to DMP
+# We want to have DMPs, so we don't have to think about gray values
 DefaultParameters.append('--tifConversionType=0')
 
 # If the user wants to reconstruct the full set, he/she set options.Slice to 0,
@@ -314,7 +323,7 @@ print '    * resulting in', len(Delta) * len(Beta),\
 answer = raw_input('---> Is this correct? [Y/n]:')
 # See if answer is Enter (not answer) yes or no (strtobool)
 if not answer or distutils.util.strtobool(answer):
-    print "\nHey ho, let's go: http://youtu.be/c1BOsShTyng"
+    print bold("\nHey ho, let's go: http://youtu.be/c1BOsShTyng")
     print 80 * '-'
 else:
     print 'Look at the help (' + sys.argv[0], '-h) and overwrite the', \
@@ -333,19 +342,20 @@ with open(os.path.join(options.SampleFolder, 'PaganinIterator.log'),
     PaganinLogFile.write('\n')
 
 # At first we need to calculate the corrected projections, since we're gonna
-# use them for everything. Give it a distinctive job name, only calculate the
-# corrections and don't make sinograms, expect tif as input, give them a nice
-# prefix and save them to a distinctively named output directory
+# use them for everything.
 cprcommand = ['prj2sinSGE']
 # Since the DefaultParameters is already a list, we don't append, but extend
 cprcommand.extend(DefaultParameters)
 # Give it a nice job name
 JobNameCpr = 'cpr_' + SampleName + str(options.Slice)
 cprcommand.append('--jobname=' + JobNameCpr)
-# Calculate corrected projections from TIFFs named so-so
+# Only calculate the corrections
 cprcommand.append('--correctionOnly')
+# Don't make sinograms
 cprcommand.append('--correctionType=3')
+# Calulate corrections from TIF images
 cprcommand.append('--inputType=1')
+# Give the output images a nice prefix
 cprcommand.append('--prefix=' + SampleName + '####.tif')
 # Numbers of projections, darks, flats, interflats and flat frequency
 cprcommand.append('--scanparameters=' + str(options.NumProj) + ',' + \
@@ -358,13 +368,13 @@ if options.Slice:
                                            str(options.Slice).zfill(4)))
 else:
     cprcommand.append('-o ' + os.path.join(options.SampleFolder, 'cpr'))
-# Do it with those files
+# Do it with all these files
 cprcommand.append(os.path.join(options.SampleFolder, 'tif'))
 
 if options.Verbose:
     print 'Submitting the calculation of the corrected projections to the', \
-    'SGE queue with:',
-    print ' '.join(cprcommand)
+    'SGE queue with:'
+    print bold(' '.join(cprcommand))
 if not options.Test:
     calculatecpr = subprocess.Popen(cprcommand, stdout=subprocess.PIPE)
     output, error = calculatecpr.communicate()
@@ -381,24 +391,40 @@ if not options.Test:
         PaganinLogFile.write(' '.join(cprcommand))
         PaganinLogFile.write('\n')
 
-# Sleep some seconds to let the job register with the queue
-print 'Waiting some seconds to let the job register at the SGE queue'
-time.sleep(5)
+# Wait a bit, to give everything enough time...
+sleepytime = 0.5
+time.sleep(sleepytime)
 
 # Calculate filtered projections and reconstructions for each delta and beta
 # by submitting it to the SGE queue with the correct commands, waiting for each
 # other
 print 80 * '-'
-print 'Submitting the calculation of the filtered projections and', \
-    'reconstructions for each of the combinations of delta and beta to the', \
-    'SGE queue.'
+if options.Verbose:
+    print 'Submitting the calculation of the filtered projections and', \
+        'reconstructions for each of the combinations of delta and beta to', \
+        'the SGE queue.'
 Steps = len(Delta) * len(Beta)
 Counter = 0
 for d in Delta:
     for b in Beta:
         Counter += 1
-        print 10 * '-', '|', str(Counter) + '/' + str(Steps),  '| delta', \
-            d, '| beta', b, '|', 26 * '-'
+        # Generate the output directories. Even though the pipeline supports
+        # generating the missing directories, submitting large numbers of jobs
+        # didn't work. The hack to make it work is thus to generate all the
+        # output directories before submitting the fltp and rec jobs.
+        fltpdir = os.path.join(options.SampleFolder, 'fltp_' +
+                               str(options.Slice).zfill(4) + '_' + str(d) +
+                               '_' + str(b) + '_' + str(options.Distance))
+        if not os.path.exists(fltpdir):
+            os.makedirs(fltpdir)
+        recdir = os.path.join(options.SampleFolder, 'rec_DMP_' +
+                              str(options.Slice).zfill(4) + '_' + str(d) +
+                              '_' + str(b) + '_' + str(options.Distance))
+        if not os.path.exists(recdir):
+            os.makedirs(recdir)
+        # Inform the user what we'll do
+        print color(' '.join([10 * '-', '|', str(Counter) + '/' + str(Steps),
+            '| delta', d, '| beta', b, '|', 26 * '-']))
         fltpcommand = ['prj2sinSGE']
         # Add default parameters
         fltpcommand.extend(DefaultParameters)
@@ -447,11 +473,9 @@ for d in Delta:
         if options.Verbose:
             print 'Submitting the calculation of the filtered projections', \
                 'to the SGE queue with:'
-            print ' '.join(fltpcommand)
-            print
+            print bold(' '.join(fltpcommand))
         if not options.Test:
-            fltp = subprocess.Popen(fltpcommand,
-                                           stdout=subprocess.PIPE)
+            fltp = subprocess.Popen(fltpcommand, stdout=subprocess.PIPE)
             output, error = fltp.communicate()
             print 'Filtered projections submitted with Job name', JobNameFltp
             # Write command to logfile
@@ -469,7 +493,7 @@ for d in Delta:
                 PaganinLogFile.write('\n')
 
         # Sleep a bit, so that the user has a feeling of stuff happening :)
-        time.sleep(0.5)
+        time.sleep(sleepytime)
 
         reconstructioncommand = ['prj2sinSGE']
         # Extending list with DefaultParameters, appending the rest
@@ -513,13 +537,9 @@ for d in Delta:
                                             '_' + str(d) + '_' + str(b) +
                                             '_' + str(options.Distance)))
             # Do it with those files
-            reconstructioncommand.append(os.path.join(options.SampleFolder,
-                                                      'fltp_' +
-                                                      str(options.Slice).zfill(4) +
-                                                      '_' + str(d) + '_' +
-                                                      str(b) +
-                                                      '_' +
-                                                      str(options.Distance)))
+            reconstructioncommand.append(os.path.join(
+                options.SampleFolder, 'fltp_' + str(options.Slice).zfill(4) +
+                '_' + str(d) + '_' + str(b) + '_' + str(options.Distance)))
         else:
             # Save the files here
             reconstructioncommand.append('-o ' +
@@ -534,10 +554,11 @@ for d in Delta:
         if options.Verbose:
             print 'Submitting the calculation of the reconstructions to', \
                 'the SGE queue with:'
-            print ' '.join(reconstructioncommand)
+            print bold(' '.join(reconstructioncommand))
         if not options.Test:
-            reconstruct = subprocess.Popen(reconstructioncommand,
-                                           stdout=subprocess.PIPE)
+            recs = subprocess.Popen(reconstructioncommand,
+                stdout=subprocess.PIPE)
+            output, error = recs.communicate()
             print 'Reconstructions submitted with Job name', JobNameRecon
             # Write command to logfile
             with open(os.path.join(options.SampleFolder,
@@ -546,13 +567,14 @@ for d in Delta:
                 PaganinLogFile.write('------| ')
                 PaganinLogFile.write(time.strftime("%Y.%m.%d@%H:%M:%S",
                                                    time.localtime()))
-                PaganinLogFile.write(' | Calculating reconstructions, Job name ')
+                PaganinLogFile.write(' | Calculating reconstructions, ')
+                PaganinLogFile.write('Job name ')
                 PaganinLogFile.write(str(JobNameRecon))
                 PaganinLogFile.write(' |------\n')
                 PaganinLogFile.write(' '.join(reconstructioncommand))
                 PaganinLogFile.write('\n')
         # Sleep a bit, so that the user thinks we're working hard :)
-        time.sleep(0.5)
+        time.sleep(sleepytime)
 print 10 * '-', 'done submitting', 53 * '-'
 
 if options.Test:
@@ -649,8 +671,8 @@ else:
             print command
             print '---'
             print 'or use'
-        print 'bash', os.path.join(options.SampleFolder,
-                                    'PaganinIterator_LookAtReconstruction.sh')
+        print color(' '.join(['bash', os.path.join(options.SampleFolder,
+                               'PaganinIterator_LookAtReconstruction.sh')]))
         if options.Verbose:
             print 'and close Fiji', str(Steps), 'times, you will then have', \
                 'TIF and JPG images to look at.'
