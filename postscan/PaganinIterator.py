@@ -28,7 +28,7 @@ watch -n 3 "rm /work/sls/bin/PaganinIterator.py;cp
 # 2013-10-14: Iteration is now possible over delta and beta or only delta.
 # 2014-01-10: Refactoring
 # 2014-01-16: Adapting it to the 'new pipeline' using the SUN grid engine
-# 2014-08-06: Making 'waitjobname' (by Kevin) default option
+# 2014-08-06: Making 'waitjobname' (implemented by Kevin) default option
 
 import sys
 import os
@@ -40,6 +40,7 @@ import time
 import distutils.util
 import logging
 
+
 # Enable bold and colorful output on the command line (http://is.gd/HCaDv9)
 def bold(msg):
     return u'\033[1m%s\033[0m' % msg
@@ -50,7 +51,6 @@ def color(string):
     # return "\033[" + this_color + "m" + string + "\033[0m"
     # but we just use purple
     return "\033[35m" + string + "\033[0m"
-
 
 # clear the commandline
 os.system('clear')
