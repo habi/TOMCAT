@@ -46,6 +46,9 @@ parser.add_option('-t', '--tomcat', dest='TOMCAT',
                   default=False, action='store_true',
                   help='Plot only TOMCAT-range of Energies (default: '
                        '%default)')
+parser.add_option('--png', dest='png',
+                  default=False, action='store_true',
+                  help='Save plot as .png (default: .pdf)')
 (options, args) = parser.parse_args()
 
 # show the help if no parameters are given
@@ -140,10 +143,12 @@ print 'a Delta of', "%.4g" % CurrentDelta, 'and a Beta of',\
     "%.4g" % CurrentBeta
 
 if options.Save:
-    plt.savefig(os.path.splitext(os.path.abspath(options.DataFile))[0] +
-                '.pdf')
-    print
-    print 'Saved plot to',\
-        os.path.splitext(os.path.abspath(options.DataFile))[0] + '.pdf'
+    filename = os.path.splitext(os.path.abspath(options.DataFile))[0]
+    if options.png:
+        filename += '.png'
+    else:
+        filename += '.pdf'
+    plt.savefig(filename)
+    print 'Saved plot to', filename
 else:
     plt.show()
