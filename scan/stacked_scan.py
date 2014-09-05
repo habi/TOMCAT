@@ -104,13 +104,16 @@ class EpicsChannel:
 # give some help to the user
 Parser = OptionParser()
 Parser.add_option('-s', '--startpos', dest='startpos', type='float',
-                  help='Start Position',
+                  help='Start Position (for the first scan)',
                   metavar='1000')
 Parser.add_option('-f', '--endpos', dest='endpos', type='float',
                   help='End Position',
                   metavar='1500')
+Parser.add_option('-k', '--blocks', dest='blocks', type='int',
+                  help='Number of blocks (if end position is not provided)',
+                  metavar='1')			  
 Parser.add_option('-c', '--correctionfactor', dest='correctionfactor', type='float',
-                  help='The correction / overlap factor to use for making blocks from stack',
+                  help='The correction / overlap factor to use for making blocks from stack Default: %default',
                   default=1.02)
 Parser.add_option('-b', '--binning', dest='bin', type='int',
                   help='The binning to use',
@@ -124,12 +127,25 @@ Parser.add_option('-t', '--Test', dest='Test',
 print options
 corr_fact=options.correctionfactor
 startpos = options.startpos
+
+if (options.endpos is None):
+	if (options.blocks is not None):
+		# Use blocks instead of end position
+		use_blocks=1
+		blocks = options.blocks
+		endpos_ready=True
+	else:
+		endpos_ready=False
+else:
+	use_blocks = 0
+	blocks = 0
+	endpos_ready=True
 endpos = options.endpos
 bin = options.bin
 binning = float(bin)
 Parser.print_help()
 testonly = options.Test
-if (startpos is not None) & (endpos is not None): # nedit doesnt help with tabs
+if (startpos is not None) & (endpos_ready): # nedit doesnt help with tabs
         # number of lines
         chSer=EpicsChannel("X02DA-ES1-CAM1:SERV_SEL")
         usedServer=chSer.getValCHK(chSer.connected)
@@ -161,14 +177,19 @@ print "Pitch size " + str(pitchsize) + " um"
 
 pixelsize = pitchsize / magnify * binning
 blocksize = float(numlines) * pixelsize
+
+if use_blocks:
+	if blocks<0: blocks+=1.1
+	else: blocks-=1.1
+	endpos = startpos+blocks*blocksize
+	print ("Using blocks so end position is calculated:",endpos)
+
 if  endpos < startpos :
 	# swap end and startpos! stacked scans always start with top block first.
 	# Top block is visible in field of view when sample stage is lowest in Y
 	# Bottom block ist visible in field of view when stample state is highest in Y
 	# -> startpos must be less than endpos -> swap if this condition is not met
-	swap     = endpos
-	endpos   = startpos
-	startpos = swap
+	(endpos,startpos) = (startpos,endpos)
 
 delta = endpos - startpos
 # compute number of blocks needed to cover the distance between start and stop position;
