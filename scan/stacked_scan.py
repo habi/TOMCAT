@@ -1,11 +1,12 @@
 #! /usr/bin/env python
-# NOTE this is only a template and thus may contain inconsistencies and errors
+# Fede's stacked_scan combined with some of david's paganiniterator
 
 import sys
 import os.path
 import string
 import commands
 import math
+from optparse import OptionParser
 #---------------------------------------------------------------------------
                           #---------------------------------
                           #----------------------------------------------
@@ -94,71 +95,41 @@ class EpicsChannel:
             print ca.message(status)
             self.connected=0        
 
-# --------------------------------- Functions --------------------------------------#
-def show_help():
-        print "USAGE"
-        print "Input parameters"
-        print "   [-t]  = do not run scans just test parameters (optional) "
-        print "   $1  = start position (in microns)"
-        print "   $2  = end position (in microns)"
-        print "Optional"
-        print "   $3  = binning. "
-        print ""
-        print "EXAMPLE"
-        print "   stacked_scan.py -4200 -8000"
-	print "     scan all blocks covering sample between position -4200 -8000 "
-        print ""
-        print "   stacked_scan.py -t -4200 -8000"
-	print "     Same as above but just print parameters for total scan and"
-        print "     each block;"
-        print ""
-        print ""
-        sys.exit(0)
+
 
 
 
 #-------------------Reading parameters-------------------------------
-path_arg_at=0
-if len(sys.argv) == 1 or len(sys.argv) > 4 or sys.argv[1]=='-h':
-        show_help()
-        sys.exit(1)
-else:
-        path_arg_at=1
-
-testonly = 0
-if path_arg_at>0:
-
-        if len(sys.argv) - path_arg_at < 2:
-                print "Startpos, endpos, number of lines and binning must be given. -t is optional" 
-		show_help()
-		sys.exit(1)
-
-        # startpos
-	if sys.argv[path_arg_at] == "-t" :
-		testonly = 1
-		path_arg_at = path_arg_at + 1
-	try:
-		startp = int(sys.argv[path_arg_at])
-		startpos = float(startp)
-	except:
-		try:
-			startpos = float(sys.argv[path_arg_at])
-		except:
-                	print "Parameter " + str(path_arg_at) + ": Position is not a number; misstyped test flag?? "
-			show_help()
-			sys.exit(1)
-        # endpos
-	try:
-		endp = int(sys.argv[path_arg_at + 1])
-		endpos = float(endp)
-	except:
-		try:
-			endpos = float(sys.argv[path_arg_at + 1])
-		except:
-                	print "Parameter " + str(path_arg_at) + ": Position is not a number; misstyped test flag?? "
-			show_help()
-			sys.exit(1)
-        
+# Use Pythons Optionparser to define and read the options, and also
+# give some help to the user
+Parser = OptionParser()
+Parser.add_option('-s', '--startpos', dest='startpos', type='float',
+                  help='Start Position',
+                  metavar='1000')
+Parser.add_option('-f', '--endpos', dest='endpos', type='float',
+                  help='End Position',
+                  metavar='1500')
+Parser.add_option('-c', '--correctionfactor', dest='correctionfactor', type='float',
+                  help='The correction / overlap factor to use for making blocks from stack',
+                  default=1.02)
+Parser.add_option('-b', '--binning', dest='bin', type='int',
+                  help='The binning to use',
+                  default=1)		  		  
+Parser.add_option('-t', '--Test', dest='Test',
+                  default=False, action='store_true',
+                  help='Only do a test-run to see the details, do not '
+                       'actually run the scan. Default: %default',
+                  metavar=1)
+(options, Arguments) = Parser.parse_args()
+print options
+corr_fact=options.correctionfactor
+startpos = options.startpos
+endpos = options.endpos
+bin = options.bin
+binning = float(bin)
+Parser.print_help()
+testonly = options.Test
+if (startpos is not None) & (endpos is not None): # nedit doesnt help with tabs
         # number of lines
         chSer=EpicsChannel("X02DA-ES1-CAM1:SERV_SEL")
         usedServer=chSer.getValCHK(chSer.connected)
@@ -174,46 +145,15 @@ if path_arg_at>0:
 	print "Number of lines " + str(numlines)
         
         # magnification
-	# Consider 2% overlapping
-	
-	corr_fact = 1.02
+
         chMag=EpicsChannel("X02DA-ES1-MS:MAGNF")
         magnify = chMag.getValCHK(chMag.connected)
 	magnify = magnify*corr_fact
 
 	print "Corrected magnification " + str(magnify) 
-	
-        # binning
-
-	if testonly==0:
-		try:
- 			if len(sys.argv)==4:
-				bin = int(sys.argv[path_arg_at + 2])
-				binning = float(bin)
-			elif len(sys.argv)==3:
-				bin = 1
-				binning = float(bin)
-		except:
-			print "Vertical binning factor must be an integer value." 
-			show_help()
-			sys.exit(1)
-	elif testonly==1:
-		try:
- 			if len(sys.argv)==5:
-				bin = int(sys.argv[path_arg_at + 3])
-				binning = float(bin)
-			elif len(sys.argv)==4:
-				bin = 1
-				binning = float(bin)
-		except:
-			print "Vertical binning factor must be an integer value." 
-			show_help()
-			sys.exit(1)
-
 else:
-	print "Error: path_arg_at: " + path_arg_at
-	show_help()
-	sys.exit(1)
+	Parser.print_help()
+	sys.exit("Required arguments are missing")
 
 chPitch=EpicsChannel("X02DA-ES1-CAM1:PIXL_SIZE.VAL")
 pitchsize = chPitch.getValCHK(chPitch.connected)
