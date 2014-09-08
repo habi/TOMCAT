@@ -27,16 +27,17 @@ parser.add_option('-s', '--scanprefix', dest='scan_prefix', help='Scan Prefix Na
 parser.add_option('-a', '--angle', dest='angle', help='Angle offset between sizes', metavar='180',default=180-0.001)
 parser.add_option('-i', '--initialangle', dest='initial_angle', help='Initial Angle', metavar='0',default=0)
 parser.add_option('-l', '--slice', dest='slice', help='Slice number to take from each scan', metavar='1000',default=1000)
+parser.add_option('-m', '--multiplefolders',dest='multiple',help='Measurements are in seperate folders',action='store_true',default=False)
 (options, args) = parser.parse_args()
 
 
 # starting offset
-sOffset=float(options.initial_angle)
+sOffset = float(options.initial_angle)
 # offset between scans (!! caution in Scientific Linux mindblowingly shitty python/PIL 
 # implementation a rotation of exactly 180 rotate(180) on 16 bit integer images you get garbage 
-angOffset=float(options.angle)
-
-sliceNumber=int(options.slice)
+angOffset = float(options.angle)
+multiple = options.multiple
+sliceNumber = int(options.slice)
 sampleName=os.path.abspath('.').split('/')[-1]
 scan_prefix='*'.join(options.scan_prefix.split('%')) # replace & with *
 
@@ -56,21 +57,30 @@ def generate_slices(folder_prefix,sliceNumber):
 	if len(imglist)<1: 
 		print "No Images found"
 		return
+	nameIndex=-2
 	# extract the scan number from the path (custom to multiple scans made with kevins script)
+	
 	try: 
-	    scanNumber=map(lambda x: int(x.split('/')[-2].split('_')[-1]),imglist)
+	    if multiple: 
+	    	scanNumber=range(len(imglist))
+		scanNames=map(lambda x: x.split('/')[-3],imglist) # just the folder name
+	    else: 
+	    	scanNumber=map(lambda x: int(x.split('/')[-2].split('_')[-1]),imglist) # a scan number extracted from the folder
+		scanNames=map(lambda i: '%03d' % i,scanNumber)
 	except:
 	    print 'Scan Number could not be automatically extracted'
 	    imglist=sorted(imglist)
 	    scanNumber=range(len(imglist))
+	    scanNames=map(lambda i: '%03d' % i,scanNumber)
 	# create a mapping (dictionary) between the scan number and the path name
 	imgdict=dict(zip(scanNumber,imglist))
+	scanNameDict = dict(zip(scanNumber,scanNames))
 	# if the output directory doesnt exist create it
 	if (not os.path.exists(outDirName)): os.makedirs(outDirName)
 	# format for the output name
-	outNameFn=lambda i: outDirName+"/%s.%04d.%03d.tif" % (sampleName,sliceNumber,i)
+	outNameFn=lambda i: outDirName+"/%s.%04d.%s.tif" % (sampleName,sliceNumber,str(i))
 	# run for every scan
-	map(lambda i: processImage(imgdict[i],outNameFn(i),i),sorted(imgdict.keys()))
+	map(lambda i: processImage(imgdict[i],outNameFn(scanNameDict[i]),i),sorted(imgdict.keys()))
 	print ('Slice %04d with offset %02.2f generated for scans:' % (sliceNumber,angOffset),imgdict.keys())
 
 if sliceNumber>=0:
@@ -78,4 +88,4 @@ if sliceNumber>=0:
 	generate_slices(scan_prefix,sliceNumber)
 else:
 	# run for every -sliceNumber slices between between 1 and 2560
-	map(lambda cslice: generate_slices(scan_prefix,cslice),range(1,2560,-1*sliceNumber))
+	map(lambda cslice: generate_slices(scan_prefix,cslice),range(1,2160,-1*sliceNumber))
