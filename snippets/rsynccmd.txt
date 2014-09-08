@@ -1,0 +1,13 @@
+Generally mounting and synchronizing disks should work if you follow the steps below:
+
+    Open the Computer window (double click on the top left icon on the desktop)
+    Turn on your disk (should work for eSATA and USB3.0)
+    Connect the disk to one of the 5 eSATA or one of the 3 USB ports
+    After a few seconds, the system should recognize the external disk and the disk will show up in the "Computer" window you opened before. USB disks should be auto-mounted while eSATA disks will be mounted if you doubleclick on them in said window.
+    After the disk has been mounted (USB automagically, eSATA after doubleclick), the icon of the disk should show up on the desktop.
+    Open the terminal (Top left icon > System Tools > Terminal)
+    Type in df in the terminal, which lists all mounted disks. The external disk will usually be called something like /media/SOME_NAME
+    Start the synchronization by issuing rsyncdir -t 60000 [source-dir] [target-dir] in the terminal. For instance: rsyncdir -t 60000 ~/Data10/disk1 /media/disk1/
+    There is also the possibility to copy only selected directories (e.g. rec_8bit) and exclude others. To do so write a file (e.g. exclude.txt) with the list of directories to exclude in your home directory and run the command: 
+
+cd;rsyncdir -t 60000 --exclude-from=exclude.txt ~/Data10/disk1 /media/disk1/;cd -
