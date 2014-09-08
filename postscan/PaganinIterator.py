@@ -29,16 +29,17 @@ watch -n 3 "rm /work/sls/bin/PaganinIterator.py;cp
 # 2014-01-10: Refactoring
 # 2014-01-16: Adapting it to the 'new pipeline' using the SUN grid engine
 # 2014-08-06: Making 'waitjobname' (implemented by Kevin) default option
+# 2014-09-08: Implemented range/iteration option, as per Annabelles help
 
-import sys
-import os
+import distutils.util
+import numpy as np
 from optparse import OptionParser
+import os
+import platform
 import subprocess
 import shutil
-import platform
+import sys
 import time
-import distutils.util
-import logging
 
 
 # Enable bold and colorful output on the command line (http://is.gd/HCaDv9)
@@ -58,68 +59,57 @@ os.system('clear')
 # Use Pythons Optionparser to define and read the options, and also
 # give some help to the user
 Parser = OptionParser()
-Parser.add_option('-D', '--Directory', dest='SampleFolder',
-                  help='Folder of the Sample you want to reconstruct with the '
-                       'different parameters. Mandatory.',
-                  metavar='path')
-Parser.add_option('-d', '--Delta', dest='Delta',
-                  type='float',
-                  help='Delta you want to start with. Mandatory.',
-                  metavar='3e-10')
-Parser.add_option('-b', '--Beta', dest='Beta', type='float',
-                  help='Beta you want to start with. Mandatory.',
-                  metavar='3e-10')
-Parser.add_option('-z', dest='Distance', type='int',
-                  help='Distance to the scintillator in mm. Mandatory.',
-                  metavar=33)
-Parser.add_option('-m', '--Magnitude', dest='Magnitude', default=3, type='int',
-                  help='Orders of magnitude you want to iterate through. By '
-                       'default the script iterates through %default orders '
-                       'of magnitude of *only* delta. If you also want to '
-                       'iterate through beta, you need to add the -i '
-                       'parameter.',
-                  metavar='2')
-Parser.add_option('-i', '--IterateBeta', dest='IterateBeta',
-                  default=False, action='store_true',
-                  help='Iterate over beta. Default: %default',
-                  metavar=1)
+Parser.add_option('-D', '--Directory', dest='SampleFolder', metavar='path',
+    help='Folder of the Sample you want to reconstruct with the different '
+    'parameters. Mandatory.')
+Parser.add_option('-d', '--Delta', dest='Delta', type='float',
+    metavar='1.2e-9', help='Delta you want to start with. Mandatory.')
+Parser.add_option('-b', '--Beta', dest='Beta', type='float', metavar='2.7e-6',
+    help='Beta you want to start with. Mandatory.')
+Parser.add_option('-z', dest='Distance', type='int', metavar=33,
+    help='Sample-Detector Distance in mm. Mandatory.')
+Parser.add_option('-m', '--Magnitude', dest='Magnitude', type='int',
+    metavar='2', help='Orders of magnitude you want to iterate delta. By '
+    'default the script iterates through %default orders of magnitude around '
+    'the given delta, and *only* delta. If you also want to iterate through '
+    'beta, you need to give the --IterateBeta option. -m and -r options are '
+    'mutually exclusive!')
+Parser.add_option('-r', '--Range', dest='Range', type='float',
+    metavar='5e-10', help='Range to iterate around delta. This might be more '
+    'useful than the -m option if you know what you do.')
+Parser.add_option('-i', '--IterationStep', dest='IterationStep', type='float',
+    metavar='1e-10', default=1e-10, help='Use this value as iteration step')
+Parser.add_option('--IterateBeta', dest='IterateBeta', default=False,
+    action='store_true', metavar=1, help='Iterate over beta. Default: '
+    '%default')
 Parser.add_option('-c', '--Rotationcenter', dest='RotationCenter',
-                  type='float',
-                  help='RotationCenter for reconstructing the slices. '
-                       'Default: Read from logfile or - if not found there - '
-                       'half of the x-width of the camera ROI.',
-                  metavar='1283.25')
-Parser.add_option('-s', '--Slice', dest='Slice', type='int',
-                  help='Slice to reconstruct. Default: Middle of camera ROI. '
-                       'If you want to reconstruct the full dataset (actually '
-                       'every 50th slice), enter 0.',
-                  metavar='123')
+    type='float', metavar='1283.25', help='RotationCenter for reconstructing '
+    'the slices. Default: Read from logfile or - if not found there - half of '
+    'the x-width of the camera ROI.')
+Parser.add_option('-n', '--Number', dest='SliceNumber', type='int',
+    metavar='123', help='Slice number to reconstruct. Default: Middle of '
+    'camera ROI. If you want to reconstruct the full dataset (actually every '
+    '50th slice), enter 0.')
 Parser.add_option('-a', '--Slicesaround', dest='SlicesAround', type='int',
-                  default=10,
-                  help='Slice to reconstruct around the chosen one (-s). '
-                       'Default: %default',
-                  metavar='14')
-Parser.add_option('--NumProj', dest='NumProj', type='int',
-                  help='Number of projections. Default: read from Logfile')
-Parser.add_option('--NumDarks', dest='NumDarks', type='int',
-                  help='Number of darks. Default: read from Logfile')
-Parser.add_option('--NumFlats', dest='NumFlats', type='int',
-                  help='Number of flats. Default: read from Logfile')
-Parser.add_option('-e', '--Energy', dest='Energy', type='float',
-                  help='Beam energy [kV]. Default: read from Logfile')
+    default=15, metavar='13', help='Slice to reconstruct around the chosen '
+    'one (-s). Default: %default')
+Parser.add_option('--NumProj', dest='NumProj', type='int', help='Number of '
+    'projections. Default: read from Logfile')
+Parser.add_option('--NumDarks', dest='NumDarks', type='int', help='Number of '
+    'darks. Default: read from Logfile')
+Parser.add_option('--NumFlats', dest='NumFlats', type='int', help='Number of '
+    'flats. Default: read from Logfile')
+Parser.add_option('-e', '--Energy', dest='Energy', type='float', help='Beam '
+    'energy [kV]. Default: read from Logfile')
 Parser.add_option('-x', '--Magnification', dest='Magnification', type='float',
-                  help='Magnification. Default: read from Logfile')
+    help='Magnification. Default: read from Logfile')
 Parser.add_option('-p', '--Pixelsize', dest='Pixelsize', type='float',
-                  help='Actual pixel size [um]. Default: read from Logfile')
-Parser.add_option('-v', '--Verbose', dest='Verbose',
-                  default=False, action='store_true',
-                  help='Be really chatty. Default: %default',
-                  metavar=1)
-Parser.add_option('-t', '--Test', dest='Test',
-                  default=False, action='store_true',
-                  help='Only do a test-run to see the details, do not '
-                       'actually reconstruct the slices. Default: %default',
-                  metavar=1)
+    help='Actual pixel size [um]. Default: read from Logfile')
+Parser.add_option('-v', '--Verbose', dest='Verbose', default=False, metavar=1,
+    action='store_true', help='Be really chatty. Default: %default')
+Parser.add_option('-t', '--Test', dest='Test', default=False, metavar=1,
+    action='store_true', help='Only do a test-run to see the details, do not '
+    'actually reconstruct the slices. Default: %default')
 (options, Arguments) = Parser.parse_args()
 
 # Show the help if no parameters are given, otherwise convert path to sample to
@@ -160,17 +150,17 @@ if options.Delta is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Delta value in it.'
     print
-    sys.exit('Please enter a Delta value with the -d parameter.')
+    Parser.error('Please enter a Delta value with the -d parameter.\n')
 if options.Beta is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Beta value in it.'
     print
-    sys.exit('Please enter a Beta value with the -b parameter.')
+    Parser.error('Please enter a Beta value with the -b parameter.\n')
 if options.Distance is None:
     print 'Your command was "' + ' '.join(sys.argv) + '"'
     print 'I cannot find a Sample-Detector distance in it.'
     print
-    sys.exit('Please enter a distance with the -z parameter.')
+    Parser.error('Please enter a distance with the -z parameter.\n')
 
 # Get the sample name from the folder
 SampleName = os.path.basename(options.SampleFolder)
@@ -229,14 +219,36 @@ if not options.RotationCenter:
     options.RotationCenter = X_ROI[1] / 2
 
 # Constructing list of deltas and betas so we can iterate through them below
-Delta = ['%.3e' % (options.Delta * 10 ** i) for i in range(-options.Magnitude,
-                                                options.Magnitude + 1)]
+if options.Magnitude and options.Range:
+    Parser.error('Options "Magnitude" (-m) and "Range" (-r) are mutually '
+        'exclusive!. Please select one or the other.\n')
+if not options.Magnitude and not options.Range:
+    Parser.error('You have to select either the "Magnitude" (-m) or the '
+        '"Range" (-r) option!\n')
+if options.Magnitude:
+    print 'Using -m option with a value of', options.Magnitude,
+    Delta = ['%.3e' % (options.Delta * 10 ** i) for
+        i in range(-options.Magnitude, options.Magnitude + 1)]
+if options.Range:
+    print 'Using -r option with a value of', options.Range,
+    Delta = np.arange(options.Delta - options.Range,
+        options.Delta + options.Range + options.IterationStep,
+        options.IterationStep)
+print 'to generate Delta values'
 
 # If the user wants to iterate through beta, make a list, otherwise just make a
 # one-element list
 if options.IterateBeta:
-    Beta = ['%.3e' % (options.Beta * 10 ** i)
+    if options.Magnitude:
+        print 'Using -m option with a value of', options.Magnitude,
+        Beta = ['%.3e' % (options.Beta * 10 ** i)
             for i in range(-options.Magnitude, options.Magnitude + 1)]
+    if options.Range:
+        print 'Using -r option with a value of', options.Range,
+        Beta = np.arange(options.Beta - options.Range,
+            options.Beta + options.Range + options.IterationStep,
+            options.IterationStep)
+    print 'to generate Beta values'
 else:
     Beta = []
     Beta.append('%.3e' % options.Beta)
@@ -249,39 +261,41 @@ DefaultParameters.append('--createMissing')
 # We want to have DMPs, so we don't have to think about gray values
 DefaultParameters.append('--tifConversionType=0')
 
-# If the user wants to reconstruct the full set, he/she set options.Slice to 0,
-# we then reconstruct every 50th sinogram. By default, we reconstruct some
-# slices around the middle of the ROI.
-if options.Slice == 0:  # evaluates to True if options.Slice is set to 0
+# If the user wants to reconstruct the full set, he/she set options.SliceNumber
+# to 0, we then reconstruct every 50th sinogram. By default, we reconstruct
+# some slices around the middle of the ROI.
+if options.SliceNumber == 0:
     DefaultParameters.append('--steplines=50')
-elif not options.Slice:
-    options.Slice = sum(Y_ROI) / len(Y_ROI)
+elif not options.SliceNumber:
+    options.SliceNumber = sum(Y_ROI) / len(Y_ROI)
 
 # Check if the default or selected slice actually makes sense, i.e is not in
 # the first or last ten slices of the ROI. If it is, suggest to reconstruct
 # another slice. In the end, set the ROI for reconstruction to be
 #'options.SlicesAround' slices around the chosen slice.
-if options.Slice - 10 < Y_ROI[0] and not options.Slice == 0:
-    sys.exit(' '.join(['Your desired slice is in the first ten slices of', \
-        'the dataset, please choose at least', str(Y_ROI[0] + 10), \
+if options.SliceNumber - options.SlicesAround < Y_ROI[0] and not \
+    options.SliceNumber == 0:
+    sys.exit(' '.join(['Your desired slice is in the first necessary slices', \
+        'of the dataset, please choose at least', str(Y_ROI[0] + 10), \
         'with the -s option.']))
-elif options.Slice + 10 > Y_ROI[1]:
-    sys.exit(' '.join(['Your desired slice is not in the last ten slices', \
-        'of the dataset, please choose at least', str(Y_ROI[1] - 10), \
+elif options.SliceNumber + options.SlicesAround > Y_ROI[1]:
+    sys.exit(' '.join(['Your desired slice is not in the last necessary', \
+        'slices of the dataset, please choose at least', str(Y_ROI[1] - 10), \
         'with the -s option.']))
-elif not options.Slice == 0:
+elif not options.SliceNumber == 0:
     # ROI in projection. Left, right, upper, lower. It's not absolute numbers
     # but lines "cut" from the start and end :)
     DefaultParameters.append('--roiParameters=0,0,' + \
-        str(options.Slice - Y_ROI[0] - options.SlicesAround - 1) + ',' + \
-        str(Y_ROI[1] - options.Slice - options.SlicesAround))
+        str(options.SliceNumber - Y_ROI[0] - options.SlicesAround - 1) + ',' \
+        + str(Y_ROI[1] - options.SliceNumber - options.SlicesAround))
     if options.Verbose:
         print 'To reconstruct', options.SlicesAround, \
-            'slices around slice', options.Slice, 'we cut the ROI'
+            'slices around slice', options.SliceNumber, 'we cut the ROI'
         print '    * from', \
-            options.Slice - Y_ROI[0] - options.SlicesAround - 1, \
+            options.SliceNumber - Y_ROI[0] - options.SlicesAround - 1, \
             'from the start of the dataset at', Y_ROI[0]
-        print '    * to',  Y_ROI[1] - options.Slice - options.SlicesAround,\
+        print '    * to', \
+            Y_ROI[1] - options.SliceNumber - options.SlicesAround, \
             'from the end of it at ' + str(Y_ROI[1]) + '.'
     print
 
@@ -301,20 +315,21 @@ print '    * the camera was set to a ROI of x=' + str(X_ROI[0]) + '-' + \
 print '    * and the rotation center is', '%0.2f' % options.RotationCenter
 print
 print 'I will'
-if options.Slice:
+if options.SliceNumber:
     print '    * reconstruct', str(options.SlicesAround), \
-        'slices above and below slice', options.Slice, '(roi=0,0,' + \
-            str(options.Slice - Y_ROI[0] - options.SlicesAround - 1) + ',' + \
-            str(Y_ROI[1] - options.Slice - options.SlicesAround) + ')'
+        'slices above and below slice', options.SliceNumber, '(roi=0,0,' + \
+            str(options.SliceNumber - Y_ROI[0] - options.SlicesAround - 1) + \
+            ',' + str(Y_ROI[1] - options.SliceNumber - \
+            options.SlicesAround) + ')'
 else:
     print '    * reconstruct the full dataset'
 print '    * with delta(s) of',
 for d in Delta:
-    print str(d) + ',',
+    print "%0.2e" % (float(d)) + ',',
 print
 print '    * with beta(s) of',
 for b in Beta:
-    print str(b) + ',',
+    print "%0.2e" % (float(b)) + ',',
 print
 print '    * at a sample-detector distance of', options.Distance, 'mm'
 print '    * resulting in', len(Delta) * len(Beta),\
@@ -347,7 +362,7 @@ cprcommand = ['prj2sinSGE']
 # Since the DefaultParameters is already a list, we don't append, but extend
 cprcommand.extend(DefaultParameters)
 # Give it a nice job name
-JobNameCpr = 'cpr_' + SampleName + str(options.Slice)
+JobNameCpr = 'cpr_' + SampleName + str(options.SliceNumber)
 cprcommand.append('--jobname=' + JobNameCpr)
 # Only calculate the corrections
 cprcommand.append('--correctionOnly')
@@ -362,10 +377,10 @@ cprcommand.append('--scanparameters=' + str(options.NumProj) + ',' + \
     str(options.NumDarks) + ',' + str(options.NumFlats) + ',0,0')
 # Save it to a nicely named folder, depending if the user want the full set or
 # not
-if options.Slice:
+if options.SliceNumber:
     cprcommand.append('-o ' + os.path.join(options.SampleFolder,
                                            'cpr_' +
-                                           str(options.Slice).zfill(4)))
+                                           str(options.SliceNumber).zfill(4)))
 else:
     cprcommand.append('-o ' + os.path.join(options.SampleFolder, 'cpr'))
 # Do it with all these files
@@ -392,7 +407,7 @@ if not options.Test:
         PaganinLogFile.write('\n')
 
 # Wait a bit, to give everything enough time...
-sleepytime = 0.5
+sleepytime = 1
 time.sleep(sleepytime)
 
 # Calculate filtered projections and reconstructions for each delta and beta
@@ -413,18 +428,20 @@ for d in Delta:
         # didn't work. The hack to make it work is thus to generate all the
         # output directories before submitting the fltp and rec jobs.
         fltpdir = os.path.join(options.SampleFolder, 'fltp_' +
-                               str(options.Slice).zfill(4) + '_' + str(d) +
-                               '_' + str(b) + '_' + str(options.Distance))
+                               str(options.SliceNumber).zfill(4) + '_' +
+                               str(d) + '_' + str(b) + '_' +
+                               str(options.Distance))
         if not os.path.exists(fltpdir):
             os.makedirs(fltpdir)
         recdir = os.path.join(options.SampleFolder, 'rec_DMP_' +
-                              str(options.Slice).zfill(4) + '_' + str(d) +
-                              '_' + str(b) + '_' + str(options.Distance))
+                              str(options.SliceNumber).zfill(4) + '_' +
+                              str(d) + '_' + str(b) + '_' +
+                              str(options.Distance))
         if not os.path.exists(recdir):
             os.makedirs(recdir)
         # Inform the user what we'll do
         print color(' '.join([10 * '-', '|', str(Counter) + '/' + str(Steps),
-            '| delta', d, '| beta', b, '|', 26 * '-']))
+            '| delta', str(d), '| beta', str(b), '|', 26 * '-']))
         fltpcommand = ['prj2sinSGE']
         # Add default parameters
         fltpcommand.extend(DefaultParameters)
@@ -452,16 +469,16 @@ for d in Delta:
             fltpcommand.append('--hold=TESTING')
         else:
             fltpcommand.append('--hold=' + JobNameCpr)
-        if options.Slice:
+        if options.SliceNumber:
             # Save the files here
             fltpcommand.append('-o ' +
                                os.path.join(options.SampleFolder, 'fltp_' +
-                                            str(options.Slice).zfill(4) +
+                                            str(options.SliceNumber).zfill(4) +
                                             '_' + str(d) + '_' + str(b) +
                                             '_' + str(options.Distance)))
             # Do it with those files
             fltpcommand.append(os.path.join(options.SampleFolder, 'cpr_' +
-                                        str(options.Slice).zfill(4)))
+                                        str(options.SliceNumber).zfill(4)))
         else:
             # Save the files here
             fltpcommand.append('-o ' +
@@ -519,7 +536,7 @@ for d in Delta:
                                      str(options.NumProj) + ',0,0,0,0')
         # Reconstruct with this suffix
         reconstructioncommand.append('--reconstruct=' +
-                                     str(options.Slice).zfill(4) + '_' +
+                                     str(options.SliceNumber).zfill(4) + '_' +
                                      str(d) + '_' + str(b) + '_' +
                                      str(options.Distance))
         # wait for the filtered projections to be done first
@@ -529,17 +546,18 @@ for d in Delta:
             reconstructioncommand.append('--hold=' + JobNameFltp)
         # We don't save the sinograms, but SGE still needs an output directory
         # to save an estimates.txt. Use the rec folder for this
-        if options.Slice:
+        if options.SliceNumber:
             # Save the files here
             reconstructioncommand.append('-o ' +
                                os.path.join(options.SampleFolder, 'rec_DMP_' +
-                                            str(options.Slice).zfill(4) +
+                                            str(options.SliceNumber).zfill(4) +
                                             '_' + str(d) + '_' + str(b) +
                                             '_' + str(options.Distance)))
             # Do it with those files
             reconstructioncommand.append(os.path.join(
-                options.SampleFolder, 'fltp_' + str(options.Slice).zfill(4) +
-                '_' + str(d) + '_' + str(b) + '_' + str(options.Distance)))
+                options.SampleFolder, 'fltp_' +
+                str(options.SliceNumber).zfill(4) + '_' + str(d) + '_' +
+                str(b) + '_' + str(options.Distance)))
         else:
             # Save the files here
             reconstructioncommand.append('-o ' +
@@ -595,10 +613,10 @@ else:
     print '    * a directory "' + \
         os.path.basename(os.path.join(options.SampleFolder, 'logs')) + \
         '" with commands, logs and errors from the SGE queue'
-    if options.Slice:
+    if options.SliceNumber:
         print '    * a directory "' + \
             os.path.basename(os.path.join(options.SampleFolder, 'cpr_' +
-                             str(options.Slice).zfill(4))) + '"',
+                             str(options.SliceNumber).zfill(4))) + '"',
     else:
         print '    * a directory "' + \
             os.path.basename(os.path.join(options.SampleFolder, 'cpr')) + \
@@ -607,47 +625,41 @@ else:
     print '    * these directories with filtered projections:'
     for d in Delta:
         for b in Beta:
-            if options.Slice:
+            if options.SliceNumber:
                 print '        *', \
                     os.path.basename(os.path.join(options.SampleFolder,
-                                                  'fltp_' +
-                                                  str(options.Slice).zfill(4) +
-                                                  '_' + str(d) + '_' + str(b) +
-                                                  '_' + str(options.Distance)))
+                        'fltp_' + str(options.SliceNumber).zfill(4) + '_' +
+                        str(d) + '_' + str(b) + '_' + str(options.Distance)))
             else:
                 print '        *', \
                     os.path.basename(os.path.join(options.SampleFolder,
-                                                  'fltp_' + str(d) + '_' +
-                                                  str(b) + '_' +
-                                                  str(options.Distance)))
+                        'fltp_' + str(d) + '_' + str(b) + '_' +
+                        str(options.Distance)))
     print '    * and these directories with reconstructed DMPs:'
     for d in Delta:
         for b in Beta:
-            if options.Slice:
+            if options.SliceNumber:
                 print '        *', \
                     os.path.basename(os.path.join(options.SampleFolder,
-                                                  'rec_DMP_' +
-                                                  str(options.Slice).zfill(4) +
-                                                  '_' + str(d) + '_' + str(b) +
-                                                  '_' + str(options.Distance)))
+                        'rec_DMP_' + str(options.SliceNumber).zfill(4) + '_' +
+                        str(d) + '_' + str(b) + '_' + str(options.Distance)))
             else:
                 print '        *', \
                     os.path.basename(os.path.join(options.SampleFolder,
-                                                  'rec_DMP_' + str(d) + '_' +
-                                                  str(b) + '_' +
-                                                  str(options.Distance)))
+                        'rec_DMP_' + str(d) + '_' + str(b) + '_' +
+                        str(options.Distance)))
     print 80 * '-'
 
     # Save small bash script to open a set of images images in Fiji
     # Give a meaningful slice if the user selected the full set to reconstruct
-    if not options.Slice:
-        options.Slice = 1001
+    if not options.SliceNumber:
+        options.SliceNumber = 1001
     """
     DUE TO THE FACT THAT WE'RE ONLY CALCULATING A ROI, THE SLICES ARE NUMBERED
     "WRONGLY" I.E. THEY ALWAYS START AT 1 AND GO TO 2*(options.SlicesAround +1)
-    INSTEAD OF CALLING THE SELECTED SLICE (str(options.Slice).zfill(4)), WE
-    THUS OPEN SLICE options.SlicesAround + 1 IN FIJI, WHICH - CONVENIENTLY - IS
-    THE MIDDLE ONE :)
+    INSTEAD OF CALLING THE SELECTED SLICE (str(options.SliceNumber).zfill(4)),
+    WE THUS OPEN SLICE options.SlicesAround + 1 IN FIJI, WHICH - CONVENIENTLY -
+    IS THE MIDDLE ONE :)
     """
     command = 'cd', options.SampleFolder, \
         '\nfor i in `ls rec_*e-* -d`;', \
@@ -664,8 +676,8 @@ else:
                'w') as CommandFile:
         CommandFile.write(command)
     if not options.Test:
-        print 'To look at slice', options.Slice, 'of all the reconstructed',  \
-            'values, you can use'
+        print 'To look at slice', options.SliceNumber, \
+            'of all the reconstructed values, you can use'
         if options.Verbose:
             print '---'
             print command
