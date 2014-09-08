@@ -429,8 +429,9 @@ for d in Delta:
         # Add default parameters
         fltpcommand.extend(DefaultParameters)
         # Give it a nice job name
-        JobNameFltp = 'fltp_' + SampleName + str(Counter) + '_' + str(d) + \
-            '_' + str(b) + '_' + str(options.Distance)
+        JobNameFltp = 'fltp_' + SampleName + '_' + str(options.Slice) + '_' + \
+	    str(Counter) + '_' + str(d) + '_' + str(b) + '_' + \
+            str(options.Distance)
         fltpcommand.append('--jobname=' + JobNameFltp)
         # calculated from DMPs, which are corrected, named so-so
         fltpcommand.append('--inputType=0')
@@ -505,8 +506,9 @@ for d in Delta:
         reconstructioncommand.append('--filter=parzen')
         reconstructioncommand.append('--zeroPadding=0.25')
         # Give it a nice job name
-        JobNameRecon = 'rec_' + SampleName + str(Counter) + '_' + str(d) + \
-            '_' + str(b) + '_' + str(options.Distance)
+        JobNameRecon = 'rec_' + SampleName + '_' + str(options.Slice) + '_' + \
+            str(Counter) + '_' + str(d) + '_' + str(b) + '_' + \
+            str(options.Distance)
         reconstructioncommand.append('--jobname=' + JobNameRecon)
         # calculated from DMPs, which are corrected, named so-so
         reconstructioncommand.append('--inputType=0')
