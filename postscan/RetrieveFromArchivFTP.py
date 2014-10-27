@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 '''
 Script to retrieve a certain sample from the archive
@@ -11,7 +12,7 @@ import subprocess
 import commands
 
 # Setup
-MountPoint = '/mnt/archiv/project/sls'
+MountPoint = '/archiv/project/sls'
 
 # Setup the different options for the user
 parser = OptionParser()
@@ -44,15 +45,15 @@ if options.eAccount is None:
 # Go!
 print 75 * '_'
 
-print 'We are looking for sample "' + options.Sample + '*" on x02da-cn-6.'
+print 'We are looking for sample "' + options.Sample + '*" on xbl-archiv.'
 print
 print 'For this I will start to look for files on',\
     os.path.join(MountPoint, options.eAccount), '(and ask you for the',\
     'password of the eAccount).'
 
-# Generate command to list the files on the MountPoint on x02da-cn-6
+# Generate command to list the files on the MountPoint on xbl-archiv
 # From http://is.gd/ZVlIg9
-sshCommand = 'ssh', '-q', options.eAccount + '@x02da-cn-6', 'find',\
+sshCommand = 'ssh', '-q', options.eAccount + '@xbl-archiv', 'find',\
     os.path.join(MountPoint, options.eAccount), '-name',  '\'*' +\
     options.Sample + '*\''
 
@@ -98,7 +99,7 @@ print 'Saving archivftp:' +\
     SampleToGet[len(os.path.commonprefix(SampleList)):], '/tif/TARCHIVE/'\
     'tif.tar to', os.path.abspath(SampleToGet), '/tif.tar'
 
-rsyncCommand = 'rsync', '-arvhP', options.eAccount + '@x02da-cn-6:' +\
+rsyncCommand = 'rsync', '-arvhP', options.eAccount + '@xbl-archiv:' +\
     SampleToGet + '/tif/TARCHIVE/tif.tar',\
     os.path.abspath(os.path.basename(SampleToGet))
 
