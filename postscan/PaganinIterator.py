@@ -343,7 +343,7 @@ with open(os.path.join(options.SampleFolder, 'PaganinIterator.log'),
 
 # At first we need to calculate the corrected projections, since we're gonna
 # use them for everything.
-cprcommand = ['prj2sinSGE']
+cprcommand = ['/afs/psi.ch/project/TOMCAT_pipeline/Beamline/tomcat_pipeline/bin/prj2sinSGE.sh']
 # Since the DefaultParameters is already a list, we don't append, but extend
 cprcommand.extend(DefaultParameters)
 # Give it a nice job name
@@ -425,7 +425,7 @@ for d in Delta:
         # Inform the user what we'll do
         print color(' '.join([10 * '-', '|', str(Counter) + '/' + str(Steps),
             '| delta', d, '| beta', b, '|', 26 * '-']))
-        fltpcommand = ['prj2sinSGE']
+        fltpcommand = ['/afs/psi.ch/project/TOMCAT_pipeline/Beamline/tomcat_pipeline/bin/prj2sinSGE.sh']
         # Add default parameters
         fltpcommand.extend(DefaultParameters)
         # Give it a nice job name
@@ -496,7 +496,7 @@ for d in Delta:
         # Sleep a bit, so that the user has a feeling of stuff happening :)
         time.sleep(sleepytime)
 
-        reconstructioncommand = ['prj2sinSGE']
+        reconstructioncommand = ['/afs/psi.ch/project/TOMCAT_pipeline/Beamline/tomcat_pipeline/bin/prj2sinSGE.sh']
         # Extending list with DefaultParameters, appending the rest
         reconstructioncommand.extend(DefaultParameters)
         # Use the center of rotation found above or input by the user

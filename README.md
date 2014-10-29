@@ -41,4 +41,6 @@ These are scripts to run after the scan to perform reconstruction, center estima
     This is done from time to time, so just checking out this repository recursively should lead to a workable state.
     
 ## snippets
-These are small chunks of code (like gists) to use for various useful tasks at the beamline
+These are small chunks of code (like gists) to use for various useful tasks at the beamline. Some of the snippets (for convience will be left on gist with hard links in the readme).
+### Touch, Reconstruct, Compress, and Send via Email (https://gist.github.com/kmader/451d84937014b75368db)
+These scripts can be used to touch (prevent deletion), perform reconstruction (using standard parameters), compress (into a single tar archive with up to 10x size improvements), and send using the Cifex system of ETH (up to 300GB/day, requires ETH login for sender but not reciever). 
