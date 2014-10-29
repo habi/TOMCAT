@@ -13,7 +13,7 @@ import glob
 import os
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
+import numpy
 import time
 import gc
 from optparse import OptionParser
@@ -34,11 +34,11 @@ def readDMP(fileName):
     datatype = 'h'
     numberOfHeaderValues = 3
 
-    headerData = np.fromfile(fd, datatype, numberOfHeaderValues)
+    headerData = numpy.fromfile(fd, datatype, numberOfHeaderValues)
 
     imageShape = (headerData[1], headerData[0])
 
-    imageData = np.fromfile(fd, np.float32, -1)
+    imageData = numpy.fromfile(fd, numpy.float32, -1)
     imageData = imageData.reshape(imageShape)
 
     fd.close()
@@ -89,6 +89,10 @@ parser.add_option('-r', '--Reconstructions', dest='Reconstructions',
                   help='Choose "DMP", "16bit" or "8bit", otherwise we will '
                   'ask',
                   metavar='DMP')
+parser.add_option('-p', '--Percent', dest='Percent',
+                  help='How many percent of stack N+1 should we compare with '
+                  'the last image of stack N. (Default: %default %)',
+                  metavar='14', type=int, default=10)
 parser.add_option('-v', '--verbose', dest='Verbose',
                   default=False,
                   action='store_true',
@@ -96,26 +100,26 @@ parser.add_option('-v', '--verbose', dest='Verbose',
                   metavar=1)
 (options, args) = parser.parse_args()
 
-# Logging
-#def myLogger(Folder, LogFileName):
-#    """
-#    Since logging in a loop does always write to the first instaniated file,
-#    we make a little wrapper around the logger function to write to a defined
-#    log file.
-#    Based on http://stackoverflow.com/a/2754216/323100
-#    """
-#    import logging
-#    import os
-#    logger = logging.getLogger(LogFileName)
-#    # either set INFO or DEBUG
-#    #~ logger.setLevel(logging.DEBUG)
-#    logger.setLevel(logging.INFO)
-#    handler = logging.FileHandler(os.path.join(Folder, LogFileName), 'w')
-#    logger.addHandler(handler)
-#    return logger
 
-options.Directory = '/sls/X02DA/data/e15171/Data10/disk1/fish1b_A_z265_B1_'
-options.Directory = '/sls/X02DA/data/e15171/Data10/disk1/Cand2_265_a_B1_'
+def myLogger(Folder, LogFileName):
+    """
+    Since logging in a loop does always write to the first instaniated file,
+    we make a little wrapper around the logger function to write to a defined
+    log file.
+    Based on http://stackoverflow.com/a/2754216/323100
+    """
+    import logging
+    import os
+    logger = logging.getLogger(LogFileName)
+    # either set INFO or DEBUG
+    #~ logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(os.path.join(Folder, LogFileName), 'w')
+    logger.addHandler(handler)
+    return logger
+
+#~ options.Directory = '/sls/X02DA/data/e15171/Data10/disk1/fish1b_A_z265_B1_'
+#~ options.Directory = '/sls/X02DA/data/e15171/Data10/disk1/Cand2_265_a_B1_'
 
 # show the help if necessary parameters are missing
 if options.Directory is None:
@@ -127,7 +131,7 @@ if options.Directory is None:
     print ''
     sys.exit(1)
 
-Folder = os.path.dirname(options.Directory)
+Folder = os.path.dirname(os.path.abspath(options.Directory))
 SampleBaseName = os.path.basename(options.Directory).replace('_B1_', '')
 
 # Find number of stacks that were scanned
@@ -137,27 +141,29 @@ print
 NumberOfStacks = 1
 while os.path.exists(os.path.join(Folder,
                                    SampleBaseName + '_B' +
-                                   str(NumberOfStacks) + '_/')):
+                                   str(NumberOfStacks + 1) + '_/')):
     NumberOfStacks += 1
-    print 'I found', os.path.basename(os.path.join(Folder,
-                                                  SampleBaseName + '_B' +
-                                                  str(NumberOfStacks)))
+    if options.Verbose:
+        print 'I also found', os.path.basename(os.path.join(Folder,
+            SampleBaseName + '_B' + str(NumberOfStacks)))
 
 print
-print 'We thus have', NumberOfStacks, 'stacked scans to go through.'
+print 'Found', NumberOfStacks, 'stacked scans to go through.'
 print
 
 # Grab directory of reconstructions.
-# Account that there might be multiple ones
-print 'Looking for folders with reconstructions in', \
-    bold(os.path.basename(options.Directory))
+# Account for the case that there might be multiple ones
+if options.Verbose:
+    print 'Looking for folders with reconstructions in', \
+        bold(os.path.basename(options.Directory))
 RecDirectories = glob.glob(os.path.join(options.Directory, '*rec*'))
-RecDirectories = [ os.path.basename(folder) for folder in RecDirectories]
+RecDirectories = [os.path.basename(folder) for folder in RecDirectories]
 if len(RecDirectories) > 1:
     print 'I found multiple directories with reconstructions.',
     RecDirectory = AskUser('Which one shall I use?', RecDirectories)
 else:
-    print 'I only found one rec folder'
+    if options.Verbose:
+        print 'I only found one rec folder'
     RecDirectory = RecDirectories[0]
 print 'Working with the reconstructions in the rec folder', \
     bold(os.path.basename(RecDirectory))
@@ -166,69 +172,139 @@ print 'Working with the reconstructions in the rec folder', \
 if 'DMP' in RecDirectory:
     options.Reconstructions = 'DMP'
 elif '16' in RecDirectory:
-    options.Reconstructions = '8bit'
+    options.Reconstructions = '16bit.tif'
 elif '8' in RecDirectory:
-    options.Reconstructions = '16bit'
+    options.Reconstructions = '8bit.tif'
 
 if options.Reconstructions is not 'DMP':
-    sys.exit('Not implemented yet, please choose DMP')
+    print 'Working with', options.Reconstructions, \
+        'images is not implemented yet, please choose a DMP folder'
+    # TODO: Implement reading of TIF files
+    sys.exit(1)
 
-#~ import sys
-#~ total = 10
-#~ for i in range(total):
-    #~ sys.stdout.write('%d / %d\r' % (i, total))
-    #~ sys.stdout.flush()
-#~ print('\nDone')
+# Count number of files in rec folder
+# TODO: parse logfile instead of counting files
+for CurrentStack in range(1, NumberOfStacks):
+    Stack = os.path.join(os.path.dirname(options.Directory),
+        SampleBaseName + '_B' + str(CurrentStack) + '_', RecDirectory)
+NumberOfReconstructions = len(glob.glob(os.path.join(Stack,
+    '*.' + options.Reconstructions)))
+print 'We found', NumberOfReconstructions, \
+    'reconstructions in the rec folder of the first stack.'
+print 'We will check the top', \
+    str(int(NumberOfReconstructions * options.Percent / 100)), \
+    'images (' + str(options.Percent) + \
+    '%) of the scan N with the bottom image of stack N.'
 
-for CurrentStack in range(NumberOfStacks):
-    TopStack = SampleBaseName + '_B' + str(CurrentStack) + '_'
-    BottomStack = SampleBaseName + '_B' + str(CurrentStack + 1) + '_'
+for StackNumber in range(1, NumberOfStacks):
+    TopStack = os.path.join(os.path.dirname(options.Directory),
+        SampleBaseName + '_B' + str(StackNumber) + '_', RecDirectory)
+    BottomStack = os.path.join(os.path.dirname(options.Directory),
+        SampleBaseName + '_B' + str(StackNumber + 1) + '_', RecDirectory)
     print 80 * '-'
-    print 'Comparing bottom of stack', bold(TopStack), 'with top of stack', \
-        bold(BottomStack)
+    print 'Comparing bottom of stack', \
+        bold(os.path.basename(os.path.dirname(TopStack))), \
+        'with top of stack', \
+        bold(os.path.basename(os.path.dirname(BottomStack)))
+    try:
+        logfile = myLogger(BottomStack,
+            '_stackedscan.merge.B' + str(StackNumber) + '.B' +
+            str(StackNumber + 1) + '.log')
+    except:
+        print 'Cannot write to', os.path.join(BottomStack,
+            '_stackedscan.merge.B' + str(StackNumber) + '.B' +
+            str(StackNumber + 1) + '.log')
+        print 'Does its directory exist?'
+        sys.exit(1)
+    if options.Verbose:
+        print 'Logging to', os.path.join(BottomStack,
+            '_stackedscan.merge.B' + str(StackNumber) + '.B' +
+            str(StackNumber + 1) + '.log')
+    logfile.info('Log file for stacked scan merging, performed on %s',
+        time.strftime('%d.%m.%Y at %H:%M:%S'))
+    logfile.info(80 * '-')
+    TopStackImageFilename = os.path.join(TopStack,
+        SampleBaseName + '_B' + str(StackNumber) + '_' +
+        str(NumberOfReconstructions) + '.rec.' + options.Reconstructions)
+    TopStackImage = readDMP(TopStackImageFilename)
+    logfile.info('Comparing ' + os.path.basename(TopStackImageFilename))
 
-exit()
+    # Prepare image display
+    plt.ion()
+    plt.figure(figsize=[16, 9])
+    DifferenceVector = numpy.empty(NumberOfReconstructions + 1)
+    DifferenceVector[:] = numpy.nan
+    # Show image we compare all the images to
+    plt.subplot(231)
+    plt.imshow(TopStackImage, cmap='gray')
+    plt.title(os.path.basename(TopStackImageFilename))
+    NumberOfImagesToCheck = NumberOfReconstructions * options.Percent / 100
+    # Go through each image to compare
+    for image in range(1, int(NumberOfImagesToCheck)):
+        CompareImageFilename = os.path.join(BottomStack,
+            SampleBaseName + '_B' + str(StackNumber + 1) + '_' +
+            str(image).zfill(3) + '.rec.' + options.Reconstructions)
+        CompareImage = readDMP(CompareImageFilename)
+        # Show current image to compare
+        plt.subplot(232)
+        plt.imshow(CompareImage, cmap='gray')
+        plt.title(os.path.basename(CompareImageFilename))
+        # Calculate Difference
+        DifferenceImage = numpy.subtract(TopStackImage, CompareImage)
 
-path1 = '/sls/X02DA/data/e15171/Data10/disk1/Cand2_265_a_B3_/rec_DMP_Paganin_0/Cand2_265_a_B3_399.rec.DMP'
-BottomImage = readDMP(path1)
+        DifferenceVector[image] = numpy.absolute(numpy.sum(
+            DifferenceImage.flatten()))
+        # Log findings
+        logfile.info('with ' + os.path.basename(CompareImageFilename) +
+            ' gives an absolute difference of ' +
+            str(round(DifferenceVector[image], 3)))
+        # Show image with the currently least difference
+        plt.subplot(233)
+        if DifferenceVector[image] == numpy.nanmin(DifferenceVector):
+            plt.imshow(DifferenceImage, cmap='gray')
+            plt.title(('\n').join(['Current best Difference Image is from',
+                os.path.basename(CompareImageFilename)]))
 
-plt.ion()
-plt.figure(figsize=[16, 9])
-NumberOfImages = 50
-DifferenceVector = np.empty(NumberOfImages + 1)
-DifferenceVector[:] = np.nan
-print 'Calculation image difference from lowest image in stack N to the', \
-    NumberOfImages, 'top images of stack N+1'
-plt.subplot(231)
-plt.imshow(image1, cmap='gray')
-plt.title(os.path.basename(path1))
-for image in range(NumberOfImages):
-    path2 = '/sls/X02DA/data/e15171/Data10/disk1/Cand2_265_a_B4_/rec_DMP_Paganin_0/Cand2_265_a_B4_' + str(image + 1).zfill(3) + '.rec.DMP'
-    image2 = readDMP(path2)
-    plt.subplot(232)
-    plt.imshow(image2, cmap='gray')
-    plt.title(os.path.basename(path2))
-    print 'calculating difference for image', os.path.basename(path2)
-    DifferenceImage = np.subtract(image1, image2)
-    del image2
-    DifferenceVector[image] = np.absolute(np.sum(DifferenceImage.flatten()))
-    plt.subplot(233)
-    if DifferenceVector[image] == np.nanmin(DifferenceVector):
-        plt.imshow(DifferenceImage, cmap='gray')
-        plt.title(('\n').join(['Current best Difference Image is from',
-            os.path.basename(path2)]))
-    del DifferenceImage
-    plt.subplot(212)
-    plt.cla()
-    plt.plot(DifferenceVector, 'o-')
-    plt.xlim([0, NumberOfImages + 1])
-    plt.ylim(ymin=0)
-    plt.title('Absolute image difference')
-    plt.draw()
-    gc.collect()
-
-print
-print 'The best matching images are'
-print os.path.basename(path1)
-print 'and'
-print 'TELL ABOUT THE OTHER IMAGE'
+        # Show plot with found differences
+        plt.subplot(212)
+        plt.cla()
+        plt.plot(DifferenceVector, '-o')
+        plt.xlim([1, NumberOfImagesToCheck + 1])
+        plt.ylim(ymin=0)
+        plt.ylabel('Absolute image difference')
+        plt.xlabel('Image to check')
+        CurrentTitle = 'Checking image', str(image), '/', \
+            str(int(NumberOfImagesToCheck))
+        plt.title(' '.join(CurrentTitle))
+        plt.draw()
+        # Try to save some memory
+        del CompareImage
+        del DifferenceImage
+        gc.collect()
+        # Clean command-line trick from http://is.gd/HCaDv9
+        sys.stdout.write('Comparing image %d/%d. Current best at image %d.\r' %
+            (image, NumberOfImagesToCheck,
+            numpy.ndarray.tolist(DifferenceVector).index(
+                numpy.nanmin(DifferenceVector))))
+        sys.stdout.flush()
+    plt.savefig(os.path.join(BottomStack,
+        '_stackedscan.difference.B' + str(StackNumber) + '.B' +
+        str(StackNumber + 1) + '.png'), transparent='True')
+    plt.close()
+    # Tell and log which file is best
+    BestMatchingImageNumber = numpy.ndarray.tolist(DifferenceVector).index(
+        numpy.nanmin(DifferenceVector))
+    BestMatchingImageFilename = os.path.join(BottomStack,
+            SampleBaseName + '_B' + str(StackNumber + 1) + '_' +
+            str(BestMatchingImageNumber).zfill(3) + '.rec.' +
+            options.Reconstructions)
+    print 'Best match was found between images', \
+        bold(os.path.basename(TopStackImageFilename)), 'and', \
+        bold(os.path.basename(BestMatchingImageFilename)), \
+        'with an absolute difference of', \
+        round(numpy.nanmin(DifferenceVector), 3)
+    logfile.info(80 * '-')
+    logfile.info('Best match was between ' +
+        os.path.basename(TopStackImageFilename) + ' and ' +
+        os.path.basename(BestMatchingImageFilename) +
+        ' with a difference of ' + str(numpy.nanmin(DifferenceVector)))
