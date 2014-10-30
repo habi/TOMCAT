@@ -5,7 +5,7 @@ the overlap might not be exactly the given one.
 If one wants to merge all the subscans to a merged dataset this script can help
 with finding the best match between the reconstructed slices.
 It does this by loading the lowest image from stack N and calculating the
-absolute difference to the top images from stack N+1.
+mean square errorto the options.Percent top images from stack N+1.
 """
 
 from __future__ import division
@@ -232,8 +232,8 @@ for StackNumber in range(1, NumberOfStacks):
     # Prepare image display
     plt.ion()
     plt.figure(figsize=[16, 9])
-    DifferenceVector = numpy.empty(NumberOfReconstructions + 1)
-    DifferenceVector[:] = numpy.nan
+    MeanSquareErrorVector = numpy.empty(NumberOfReconstructions + 1)
+    MeanSquareErrorVector[:] = numpy.nan
     # Show image we compare all the images to
     plt.subplot(231)
     plt.imshow(TopStackImage, cmap='gray')
@@ -249,31 +249,31 @@ for StackNumber in range(1, NumberOfStacks):
         plt.subplot(232)
         plt.imshow(CompareImage, cmap='gray')
         plt.title(os.path.basename(CompareImageFilename))
-        # Calculate Difference
+        # Calculate difference between the given images to show later
         DifferenceImage = numpy.subtract(TopStackImage, CompareImage)
-
-        DifferenceVector[image] = numpy.absolute(numpy.sum(
-            DifferenceImage.flatten()))
+        # Calculate the mean square error
+        MeanSquareErrorVector[image] = (DifferenceImage ** 2).mean()
         # Log findings
         logfile.info('with ' + os.path.basename(CompareImageFilename) +
-            ' gives an absolute difference of ' +
-            str(round(DifferenceVector[image], 3)))
+            ' gives a mean square error of %e' % MeanSquareErrorVector[image])
         # Show image with the currently least difference
         plt.subplot(233)
-        if DifferenceVector[image] == numpy.nanmin(DifferenceVector):
+        if MeanSquareErrorVector[image] == numpy.nanmin(MeanSquareErrorVector):
             plt.imshow(DifferenceImage, cmap='gray')
-            plt.title(('\n').join(['Current best Difference Image is from',
+            plt.title(('\n').join([
+                'Current best MSE (%.3e) is from' % numpy.nanmin(
+                    MeanSquareErrorVector),
                 os.path.basename(CompareImageFilename)]))
 
         # Show plot with found differences
         plt.subplot(212)
         plt.cla()
-        plt.plot(DifferenceVector, '-o')
-        plt.xlim([1, NumberOfImagesToCheck + 1])
+        plt.plot(MeanSquareErrorVector, '-o')
+        plt.xlim([1, NumberOfImagesToCheck])
         plt.ylim(ymin=0)
-        plt.ylabel('Absolute image difference')
+        plt.ylabel('Mean square error')
         plt.xlabel('Image to check')
-        CurrentTitle = 'Checking image', str(image), '/', \
+        CurrentTitle = 'Checking image', str(image), 'of', \
             str(int(NumberOfImagesToCheck))
         plt.title(' '.join(CurrentTitle))
         plt.draw()
@@ -281,19 +281,19 @@ for StackNumber in range(1, NumberOfStacks):
         del CompareImage
         del DifferenceImage
         gc.collect()
-        # Clean command-line trick from http://is.gd/HCaDv9
-        sys.stdout.write('Comparing image %d/%d. Current best at image %d.\r' %
-            (image, NumberOfImagesToCheck,
-            numpy.ndarray.tolist(DifferenceVector).index(
-                numpy.nanmin(DifferenceVector))))
+        # Clean command-line with "\r" and "flush". From http://is.gd/HCaDv9
+        sys.stdout.write('%d/%d: Current best MSE (%.1e) from %s.\r' % (image,
+            NumberOfImagesToCheck, numpy.nanmin(MeanSquareErrorVector),
+            os.path.basename(CompareImageFilename)))
         sys.stdout.flush()
     plt.savefig(os.path.join(BottomStack,
         '_stackedscan.difference.B' + str(StackNumber) + '.B' +
         str(StackNumber + 1) + '.png'), transparent='True')
     plt.close()
     # Tell and log which file is best
-    BestMatchingImageNumber = numpy.ndarray.tolist(DifferenceVector).index(
-        numpy.nanmin(DifferenceVector))
+    # Convert array to list so we can use ".index()" to find the image number
+    BestMatchingImageNumber = numpy.ndarray.tolist(
+        MeanSquareErrorVector).index(numpy.nanmin(MeanSquareErrorVector))
     BestMatchingImageFilename = os.path.join(BottomStack,
             SampleBaseName + '_B' + str(StackNumber + 1) + '_' +
             str(BestMatchingImageNumber).zfill(3) + '.rec.' +
@@ -301,10 +301,10 @@ for StackNumber in range(1, NumberOfStacks):
     print 'Best match was found between images', \
         bold(os.path.basename(TopStackImageFilename)), 'and', \
         bold(os.path.basename(BestMatchingImageFilename)), \
-        'with an absolute difference of', \
-        round(numpy.nanmin(DifferenceVector), 3)
+        'with a mean square error of %.3e' % numpy.nanmin(
+            MeanSquareErrorVector)
     logfile.info(80 * '-')
-    logfile.info('Best match was between ' +
+    logfile.info('Best match was found between ' +
         os.path.basename(TopStackImageFilename) + ' and ' +
         os.path.basename(BestMatchingImageFilename) +
-        ' with a difference of ' + str(numpy.nanmin(DifferenceVector)))
+        ' with a mean square error of %e' % numpy.nanmin(MeanSquareErrorVector))
