@@ -137,18 +137,17 @@ SampleBaseName = os.path.basename(options.Directory).replace('_B1_', '')
 # Find number of stacks that were scanned
 print 'Looking for all stacked scans of', bold(SampleBaseName), 'in', \
     bold(Folder)
-print
 NumberOfStacks = 1
 while os.path.exists(os.path.join(Folder,
                                    SampleBaseName + '_B' +
                                    str(NumberOfStacks + 1) + '_/')):
     NumberOfStacks += 1
     if options.Verbose:
+        print
         print 'I also found', os.path.basename(os.path.join(Folder,
             SampleBaseName + '_B' + str(NumberOfStacks)))
-
-print
-print 'Found', NumberOfStacks, 'stacked scans to go through.'
+        print
+print 'Found a total of', NumberOfStacks, 'stacked scans to go through.'
 print
 
 # Grab directory of reconstructions.
@@ -194,7 +193,7 @@ print 'We found', NumberOfReconstructions, \
 print 'We will check the top', \
     str(int(NumberOfReconstructions * options.Percent / 100)), \
     'images (' + str(options.Percent) + \
-    '%) of the scan N with the bottom image of stack N.'
+    '%) of the scan N+1 with the bottom image of stack N.'
 
 for StackNumber in range(1, NumberOfStacks):
     TopStack = os.path.join(os.path.dirname(options.Directory),
@@ -216,10 +215,6 @@ for StackNumber in range(1, NumberOfStacks):
             str(StackNumber + 1) + '.log')
         print 'Does its directory exist?'
         sys.exit(1)
-    if options.Verbose:
-        print 'Logging to', os.path.join(BottomStack,
-            '_stackedscan.merge.B' + str(StackNumber) + '.B' +
-            str(StackNumber + 1) + '.log')
     logfile.info('Log file for stacked scan merging, performed on %s',
         time.strftime('%d.%m.%Y at %H:%M:%S'))
     logfile.info(80 * '-')
@@ -282,7 +277,7 @@ for StackNumber in range(1, NumberOfStacks):
         del DifferenceImage
         gc.collect()
         # Clean command-line with "\r" and "flush". From http://is.gd/HCaDv9
-        sys.stdout.write('%d/%d: Current best MSE (%.1e) from %s.\r' % (image,
+        sys.stdout.write('%d/%d: Current best MSE (%.1e) from %s\r' % (image,
             NumberOfImagesToCheck, numpy.nanmin(MeanSquareErrorVector),
             os.path.basename(CompareImageFilename)))
         sys.stdout.flush()
@@ -298,13 +293,23 @@ for StackNumber in range(1, NumberOfStacks):
             SampleBaseName + '_B' + str(StackNumber + 1) + '_' +
             str(BestMatchingImageNumber).zfill(3) + '.rec.' +
             options.Reconstructions)
-    print 'Best match was found between images', \
+    print 'Best match between images', \
         bold(os.path.basename(TopStackImageFilename)), 'and', \
         bold(os.path.basename(BestMatchingImageFilename)), \
         'with a mean square error of %.3e' % numpy.nanmin(
             MeanSquareErrorVector)
     logfile.info(80 * '-')
-    logfile.info('Best match was found between ' +
+    logfile.info('Best match between ' +
         os.path.basename(TopStackImageFilename) + ' and ' +
         os.path.basename(BestMatchingImageFilename) +
-        ' with a mean square error of %e' % numpy.nanmin(MeanSquareErrorVector))
+        ' with a mean square error of %e' % numpy.nanmin(
+            MeanSquareErrorVector))
+    print 'Log file written to', os.path.join(BottomStack,
+            '_stackedscan.merge.B' + str(StackNumber) + '.B' +
+            str(StackNumber + 1) + '.log')
+    print 'Image saved to to', os.path.join(BottomStack,
+        '_stackedscan.difference.B' + str(StackNumber) + '.B' +
+        str(StackNumber + 1) + '.png')
+
+print 80 * '-'
+print 'Done with everything'
