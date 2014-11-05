@@ -125,28 +125,30 @@ def myLogger(Folder, LogFileName):
 if options.Directory is None:
     parser.print_help()
     print 'Example:'
-    print 'The command below does THIS AND THAT'
+    print 'The command below calculates the overlap of all the stacked', \
+        'scans of sample', bold('SampleName'), 'for an overlap of 15% (give',\
+        'the script a bigger overlap that what you expect) and is really', \
+        'chatty about it.'
     print ''
-    print sys.argv[0], '-D /sls/X02DA/data/e12740/Data10/disk1/SampleName_B1'
+    print sys.argv[0], '-D /sls/X02DA/data/e12740/Data10/disk1/', \
+        'SampleName_B1 -p 15 -v'
     print ''
     sys.exit(1)
 
-Folder = os.path.dirname(os.path.abspath(options.Directory))
-SampleBaseName = os.path.basename(options.Directory).replace('_B1_', '')
+StartingFolder = os.path.dirname(os.path.abspath(options.Directory))
+SampleBaseName = os.path.basename(os.path.abspath(options.Directory)).replace(
+    '_B1_', '')
 
 # Find number of stacks that were scanned
 print 'Looking for all stacked scans of', bold(SampleBaseName), 'in', \
-    bold(Folder)
+    bold(StartingFolder)
 NumberOfStacks = 1
-while os.path.exists(os.path.join(Folder,
-                                   SampleBaseName + '_B' +
-                                   str(NumberOfStacks + 1) + '_/')):
+while os.path.exists(os.path.join(StartingFolder,
+    SampleBaseName + '_B' + str(NumberOfStacks + 1) + '_/')):
     NumberOfStacks += 1
     if options.Verbose:
-        print
-        print 'I also found', os.path.basename(os.path.join(Folder,
+        print 'I also found', os.path.basename(os.path.join(StartingFolder,
             SampleBaseName + '_B' + str(NumberOfStacks)))
-        print
 print 'Found a total of', NumberOfStacks, 'stacked scans to go through.'
 print
 
@@ -184,7 +186,7 @@ if options.Reconstructions is not 'DMP':
 # Count number of files in rec folder
 # TODO: parse logfile instead of counting files
 for CurrentStack in range(1, NumberOfStacks):
-    Stack = os.path.join(os.path.dirname(options.Directory),
+    Stack = os.path.join(StartingFolder,
         SampleBaseName + '_B' + str(CurrentStack) + '_', RecDirectory)
 NumberOfReconstructions = len(glob.glob(os.path.join(Stack,
     '*.' + options.Reconstructions)))
@@ -196,9 +198,9 @@ print 'We will check the top', \
     '%) of the scan N+1 with the bottom image of stack N.'
 
 for StackNumber in range(1, NumberOfStacks):
-    TopStack = os.path.join(os.path.dirname(options.Directory),
+    TopStack = os.path.join(StartingFolder,
         SampleBaseName + '_B' + str(StackNumber) + '_', RecDirectory)
-    BottomStack = os.path.join(os.path.dirname(options.Directory),
+    BottomStack = os.path.join(StartingFolder,
         SampleBaseName + '_B' + str(StackNumber + 1) + '_', RecDirectory)
     print 80 * '-'
     print 'Comparing bottom of stack', \
