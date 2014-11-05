@@ -3,3 +3,4 @@ TOMCAT-*
 WideFieldScan*
 test*
 libtiff.py
+*.pyc
