@@ -4,3 +4,4 @@ WideFieldScan*
 test*
 libtiff.py
 *.pyc
+*.py~
