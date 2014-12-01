@@ -446,7 +446,7 @@ for d in Delta:
         # Add default parameters
         fltpcommand.extend(DefaultParameters)
         # Give it a nice job name
-        JobNameFltp = 'fltp_' + SampleName + '_' + str(options.Slice) + '_' + \
+        JobNameFltp = 'fltp_' + SampleName + '_' + str(options.SliceNumber) + '_' + \
 	    str(Counter) + '_' + str(d) + '_' + str(b) + '_' + \
             str(options.Distance)
         fltpcommand.append('--jobname=' + JobNameFltp)
@@ -523,7 +523,7 @@ for d in Delta:
         reconstructioncommand.append('--filter=parzen')
         reconstructioncommand.append('--zeroPadding=0.25')
         # Give it a nice job name
-        JobNameRecon = 'rec_' + SampleName + '_' + str(options.Slice) + '_' + \
+        JobNameRecon = 'rec_' + SampleName + '_' + str(options.SliceNumber) + '_' + \
             str(Counter) + '_' + str(d) + '_' + str(b) + '_' + \
             str(options.Distance)
         reconstructioncommand.append('--jobname=' + JobNameRecon)
