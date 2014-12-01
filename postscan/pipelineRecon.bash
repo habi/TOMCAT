@@ -1,6 +1,6 @@
 #! /bin/bash
 # usage: pipelineRecon.bash diskName sampleName
-# runs runs the standard absorption reconstruction using the new pipeline with the following settings
+# runs the standard absorption reconstruction using the new pipeline with the following settings
 # saves the files as 16 bit tiff files
 eaccount=$USER
 disk=$1
