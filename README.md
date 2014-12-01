@@ -72,7 +72,8 @@ Ask Rajmund for details on those.
 
     
 ## snippets
-These are small chunks of code (like gists) to use for various useful tasks at the beamline. Some of the snippets (for convience will be left on gist with hard links in the readme).
+These are small chunks of code (like gists) to use for various useful tasks at the beamline.
+Some of the snippets (for convience) will be left on gist with hard links in the [README](README.md).
 
 ### Touch, Reconstruct, Compress, and Send via Email (https://gist.github.com/kmader/451d84937014b75368db)
 These scripts can be used to touch (prevent deletion), perform reconstruction (using standard parameters), compress (into a single tar archive with up to 10x size improvements), and send using the Cifex system of ETH (up to 300GB/day, requires ETH login for sender but not reciever). 
