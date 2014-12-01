@@ -21,9 +21,6 @@ These scripts are meant to be run before a scan is started and are used for alig
 - [`CenterAxis.py`](prescan/CenterAxis.py)` helps you to center the rotation axis.
     The calculations to do this are trivial, but annyoing to do over and over.
     If you use this script with the pins and image them first at 0° and 180° and then at 90° and 270° you should end up with a perfectly centered sample holder rotation axis.
-    Starting the script without any parameters should give you a descriptive help.
-- ```RadiographyAsStack.ijm``` is a script which can be run in the ImageJ control for the camera to capture a series of images from the camera and save them inside an ImageJ stack so they can be previewed immediately.
-    This is limited by available memory in ImageJ.
 
 ## scan
 These are scanning macros for use with [SPEC](http://www.certif.com/spec.html) and accompanying bash and Python scripts for running more complicated scans
@@ -74,6 +71,12 @@ Ask Rajmund for details on those.
 ## snippets
 These are small chunks of code (like gists) to use for various useful tasks at the beamline.
 Some of the snippets (for convience) will be left on gist with hard links in the [README](README.md).
+The names of the files should be descriptive, otherwise just ask!
 
-### Touch, Reconstruct, Compress, and Send via Email (https://gist.github.com/kmader/451d84937014b75368db)
-These scripts can be used to touch (prevent deletion), perform reconstruction (using standard parameters), compress (into a single tar archive with up to 10x size improvements), and send using the Cifex system of ETH (up to 300GB/day, requires ETH login for sender but not reciever). 
+### Touch, Reconstruct, Compress, and Send via Email
+- [These scripts](https://gist.github.com/kmader/451d84937014b75368db) can be used to
+  - `touch` (prevent deletion)
+  - perform reconstruction (using standard parameters)
+  - compress (into a single tar archive with up to 10x size improvements), and
+  - send the files using the [CIFEX system of the ETHZ](https://cifex.ethz.ch/) (up to 300GB/day, requires ETH login for sender (but not reciever)).
+
