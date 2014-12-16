@@ -1,35 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 '''
+PaganinIterator.py | David Haberthür <david.haberthuer@psi.ch>
+
 Script to reconstruct a sample with different Paganin parameters.
 Very loosely based on Peter Modreggers 'pags' bash script
-
-Use
----
-rm /work/sls/bin/PaganinIterator.py
-cp ~/Dev/TOMCAT-beamline-scripts/postscan/PaganinIterator.py /work/sls/bin/
-chmod 0777 /work/sls/bin/PaganinIterator.py
----
-on SLSLc to move it to /work/sls/bin to make it available for all users.
-Or do it continuously for testing
----
-watch -n 3 "rm /work/sls/bin/PaganinIterator.py;cp
-    ~/Dev/TOMCAT-beamline-scripts/postscan/PaganinIterator.py
-    /work/sls/bin/;chmod 0777 /work/sls/bin/PaganinIterator.py"
----
 '''
-
-# First version: 2013-02-18: Based on ReconstructSinogram.py
-# 2013-02-21: Cleanup
-# 2013-02-22: Jacky suggested to add the 'z'-Parameter to the output
-# 2013-02-25: Bernd suggested to add a check if commands are run successfully
-# 2013-10-08: Made script less chatty (in general), more informative where
-#             necessary and cleaned it up in general.
-# 2013-10-14: Iteration is now possible over delta and beta or only delta.
-# 2014-01-10: Refactoring
-# 2014-01-16: Adapting it to the 'new pipeline' using the SUN grid engine
-# 2014-08-06: Making 'waitjobname' (implemented by Kevin) default option
-# 2014-09-08: Implemented range/iteration option, as per Annabelles help
 
 import distutils.util
 import numpy as np
@@ -40,7 +17,6 @@ import subprocess
 import shutil
 import sys
 import time
-
 
 # Enable bold and colorful output on the command line (http://is.gd/HCaDv9)
 def bold(msg):
@@ -447,7 +423,7 @@ for d in Delta:
         fltpcommand.extend(DefaultParameters)
         # Give it a nice job name
         JobNameFltp = 'fltp_' + SampleName + '_' + str(options.SliceNumber) + '_' + \
-	    str(Counter) + '_' + str(d) + '_' + str(b) + '_' + \
+        str(Counter) + '_' + str(d) + '_' + str(b) + '_' + \
             str(options.Distance)
         fltpcommand.append('--jobname=' + JobNameFltp)
         # calculated from DMPs, which are corrected, named so-so

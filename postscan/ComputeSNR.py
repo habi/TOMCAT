@@ -1,15 +1,18 @@
-#!/usr/bin/python
-# -*- coding: utf8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-'''
-Script to calculate and plot the Signal to noise ratio of an image
-'''
+"""
+ComputeSNR.py | David Haberthür <david.haberthuer@psi.ch>
+
+This script can be used to calculate and plot the Signal to noise ratio of an
+image
+"""
 
 from optparse import OptionParser
-from pylab import *
+import matplotlib.pyplot as plt
 import scipy.stats
 
-ion()
+plt.ion()
 
 # Use Pythons Optionparser to define and read the options, and also
 # give some help to the user
@@ -137,6 +140,6 @@ plt.draw()
 
 print '---'
 
-ioff()
+plt.ioff()
 
 plt.show()

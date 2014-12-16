@@ -1,7 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 '''
+SampleStatus.py | Kevin Mader <kevin.mader@gmail.com>
+
 Script to show the samples currently measured, basic information about them
 (center, etc), and how many files are in each of the corresponding directories.
 '''

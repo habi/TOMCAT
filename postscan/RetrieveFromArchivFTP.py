@@ -1,9 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 '''
-Script to retrieve a certain sample from the archive
+ReplaceProjections.py | David Haberthür <david.haberthuer@psi.ch>
+
+Script to retrieve a certain sample from the PSI tape archive
 '''
+
 import sys
 from optparse import OptionParser
 import getpass

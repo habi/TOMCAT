@@ -1,6 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 '''
+PaganinPlotter.py | David Haberthür <david.haberthuer@psi.ch>
+
 Script to plot the delta and beta values foud in the [CXRO] database,
 Get the data file from the [Index of Refraction] website, save it as NAME.dat
 and plot it with this script

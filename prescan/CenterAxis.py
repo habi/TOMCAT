@@ -1,9 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 '''
-Script to calculate the center for the rotation axis.
-Should evolve in an automated centering script.
+CenterAxis.py | David Haberthür <david.haberthuer@psi.ch>
+
+Script to calculate and set the correct center for the sample stage rotation
+axis. The calculation to do are really easy, but cumbersome to do each time.
 '''
 
 # Import necessary modules

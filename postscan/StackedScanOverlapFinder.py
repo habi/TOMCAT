@@ -1,4 +1,9 @@
-"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+'''
+StackedScanOverlapFinder.py | David Haberthür <david.haberthuer@psi.ch>
+
 Script to find the best "overlap" from merged scans.
 Even when setting the overlap to a certain value (-c 1.1 in stacked-scan.py),
 the overlap might not be exactly the given one.
@@ -6,7 +11,7 @@ If one wants to merge all the subscans to a merged dataset this script can help
 with finding the best match between the reconstructed slices.
 It does this by loading the lowest image from stack N and calculating the
 mean square errorto the options.Percent top images from stack N+1.
-"""
+'''
 
 from __future__ import division
 import glob
