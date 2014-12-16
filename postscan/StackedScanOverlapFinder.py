@@ -114,7 +114,6 @@ def myLogger(Folder, LogFileName):
     Based on http://stackoverflow.com/a/2754216/323100
     """
     import logging
-    import os
     logger = logging.getLogger(LogFileName)
     # either set INFO or DEBUG
     #~ logger.setLevel(logging.DEBUG)

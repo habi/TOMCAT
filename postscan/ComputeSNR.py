@@ -10,6 +10,7 @@ image
 
 from optparse import OptionParser
 import matplotlib.pyplot as plt
+import numpy
 import scipy.stats
 
 plt.ion()
@@ -54,7 +55,7 @@ print 'Reading "' + options.Filename + '"...'
 try:
     Image = plt.imread(options.Filename)
     Image = sum(Image, axis=2)  # sum RGB channels, i.e. convert to grayscale
-    Image = flipud(Image)  # Flip the image upsidedown, since Matplotlib has the origin at a different place. If not, we'd have to use "origin='lower'" in every imshow and calculate too much with all the coordinates...
+    Image = numpy.flipud(Image)  # Flip the image upsidedown, since Matplotlib has the origin at a different place. If not, we'd have to use "origin='lower'" in every imshow and calculate too much with all the coordinates...
 except:
     print 'I was not able to read the file, did you specify the correct path with "-f"?'
     exit(1)
@@ -63,10 +64,10 @@ print options.Filename, 'is', Image.shape[1], 'x', Image.shape[0], 'pixels big.'
 # Show Image
 plt.figure(1)
 plt.subplot(121)
-plt.imshow(Image, cmap=cm.gray, interpolation='nearest')
+plt.imshow(Image, cmap='gray', interpolation='nearest')
 if options.ROI is None:
     plt.title('Please select the two corners of the ROI to work with')
-    options.ROI = ginput(2)
+    options.ROI = plt.ginput(2)
 plt.hlines(options.ROI[0][1], options.ROI[0][0], options.ROI[1][0], 'r', linewidth=3)
 plt.hlines(options.ROI[1][1], options.ROI[0][0], options.ROI[1][0], 'r', linewidth=3)
 plt.vlines(options.ROI[0][0], options.ROI[0][1], options.ROI[1][1], 'r', linewidth=3)
@@ -82,7 +83,7 @@ plt.draw()
 #~ # Show new figure with ROI
 #~ plt.figure(2)
 #~ plt.subplot(132)
-#~ plt.imshow(Image[y1:y2, x1:x2],cmap=cm.gray,interpolation='nearest') # Interpolation 'nearest' does not interpolate pixels.
+#~ plt.imshow(Image[y1:y2, x1:x2],cmap='gray',interpolation='nearest') # Interpolation 'nearest' does not interpolate pixels.
 #~ PlotTitle = 'ROI from x=' + str(x1) + ' to ' + str(x2) + \
     #~ ' and from y=' + str(y1) + ' to ' + str(y2)
 #~ plt.title(PlotTitle)
@@ -91,10 +92,10 @@ plt.draw()
 # Select points for CNR
 #~ plt.figure(3)
 plt.subplot(122)
-plt.imshow(Image[y1:y2, x1:x2], cmap=cm.gray, interpolation='nearest')  # Interpolation 'nearest' does not interpolate pixels.
+plt.imshow(Image[y1:y2, x1:x2], cmap='gray', interpolation='nearest')  # Interpolation 'nearest' does not interpolate pixels.
 if options.CNRCoordinates is None:
     plt.title('Pick two points to calculate the CNR between them')
-    options.CNRCoordinates = ginput(2)
+    options.CNRCoordinates = plt.ginput(2)
 plt.draw()
 # draw CNR ROI around them
 ## Point 1
@@ -109,13 +110,13 @@ plt.vlines(options.CNRCoordinates[1][0]-options.CNRPixelWidth, options.CNRCoordi
 plt.vlines(options.CNRCoordinates[1][0]+options.CNRPixelWidth, options.CNRCoordinates[1][1]-options.CNRPixelWidth, options.CNRCoordinates[1][1]+options.CNRPixelWidth, 'r')
 plt.draw()
 
-S1 = np.mean(Image[options.CNRCoordinates[0][1]-options.CNRPixelWidth:options.CNRCoordinates[0][1]+options.CNRPixelWidth,
+S1 = numpy.mean(Image[options.CNRCoordinates[0][1]-options.CNRPixelWidth:options.CNRCoordinates[0][1]+options.CNRPixelWidth,
              options.CNRCoordinates[0][0]-options.CNRPixelWidth:options.CNRCoordinates[0][0]+options.CNRPixelWidth])
-S2 = np.mean(Image[options.CNRCoordinates[1][1]-options.CNRPixelWidth:options.CNRCoordinates[1][1]+options.CNRPixelWidth,
+S2 = numpy.mean(Image[options.CNRCoordinates[1][1]-options.CNRPixelWidth:options.CNRCoordinates[1][1]+options.CNRPixelWidth,
              options.CNRCoordinates[1][0]-options.CNRPixelWidth:options.CNRCoordinates[1][0]+options.CNRPixelWidth])
-Sigma1 = np.std(Image[options.CNRCoordinates[0][1]-options.CNRPixelWidth:options.CNRCoordinates[0][1]+options.CNRPixelWidth,
+Sigma1 = numpy.std(Image[options.CNRCoordinates[0][1]-options.CNRPixelWidth:options.CNRCoordinates[0][1]+options.CNRPixelWidth,
                 options.CNRCoordinates[0][0]-options.CNRPixelWidth:options.CNRCoordinates[0][0]+options.CNRPixelWidth])
-Sigma2 = np.std(Image[options.CNRCoordinates[1][1]-options.CNRPixelWidth:options.CNRCoordinates[1][1]+options.CNRPixelWidth,
+Sigma2 = numpy.std(Image[options.CNRCoordinates[1][1]-options.CNRPixelWidth:options.CNRCoordinates[1][1]+options.CNRPixelWidth,
                 options.CNRCoordinates[1][0]-options.CNRPixelWidth:options.CNRCoordinates[1][0]+options.CNRPixelWidth])
 
 # Output
@@ -123,8 +124,8 @@ print
 print '---'
 print 'ROI:'
 SNR = scipy.stats.signaltonoise(Image[y1:y2, x1:x2].ravel())
-Mean = np.mean(Image[y1:y2, x1:x2])
-STD = np.std(Image[y1:y2, x1:x2])
+Mean = numpy.mean(Image[y1:y2, x1:x2])
+STD = numpy.std(Image[y1:y2, x1:x2])
 print 'The SNR of the ROI is:', SNR
 print 'Mean =', round(Mean, 3), '| STD =', round(STD, 3), '| SNR ("Mean/STD") =', round(Mean/STD, 3)
 
@@ -132,7 +133,7 @@ print
 print 'CNR between the two selected points:'
 print 'with a ROI area around them of', (2*options.CNRPixelWidth)**2, 'pixels (±width of', options.CNRPixelWidth, 'pixels).'
 
-CNR = np.abs(S1-S2)/(Sigma1+Sigma2)
+CNR = numpy.abs(S1-S2)/(Sigma1+Sigma2)
 print 'The CNR between the two points is:', CNR
 title = 'CNR: '+str(round(CNR, 4))
 plt.title(title)

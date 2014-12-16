@@ -6,6 +6,7 @@ import os.path
 import string
 import commands
 import math
+import time
 from optparse import OptionParser
 #---------------------------------------------------------------------------
                           #---------------------------------
@@ -93,7 +94,7 @@ class EpicsChannel:
             self.connected=1
         except CaChannelException, status:
             print ca.message(status)
-            self.connected=0        
+            self.connected=0
 
 
 
@@ -111,13 +112,13 @@ Parser.add_option('-f', '--endpos', dest='endpos', type='float',
                   metavar='1500')
 Parser.add_option('-k', '--blocks', dest='blocks', type='int',
                   help='Number of blocks (if end position is not provided)',
-                  metavar='1')			  
+                  metavar='1')
 Parser.add_option('-c', '--correctionfactor', dest='correctionfactor', type='float',
                   help='The correction / overlap factor to use for making blocks from stack Default: %default',
                   default=1.02)
 Parser.add_option('-b', '--binning', dest='bin', type='int',
                   help='The binning to use',
-                  default=1)		  		  
+                  default=1)
 Parser.add_option('-t', '--Test', dest='Test',
                   default=False, action='store_true',
                   help='Only do a test-run to see the details, do not '
@@ -129,17 +130,17 @@ corr_fact=options.correctionfactor
 startpos = options.startpos
 
 if (options.endpos is None):
-	if (options.blocks is not None):
-		# Use blocks instead of end position
-		use_blocks=1
-		blocks = options.blocks
-		endpos_ready=True
-	else:
-		endpos_ready=False
+    if (options.blocks is not None):
+        # Use blocks instead of end position
+        use_blocks=1
+        blocks = options.blocks
+        endpos_ready=True
+    else:
+        endpos_ready=False
 else:
-	use_blocks = 0
-	blocks = 0
-	endpos_ready=True
+    use_blocks = 0
+    blocks = 0
+    endpos_ready=True
 endpos = options.endpos
 bin = options.bin
 binning = float(bin)
@@ -150,26 +151,26 @@ if (startpos is not None) & (endpos_ready): # nedit doesnt help with tabs
         chSer=EpicsChannel("X02DA-ES1-CAM1:SERV_SEL")
         usedServer=chSer.getValCHK(chSer.connected)
 
-	if usedServer==0:
-		chNLines=EpicsChannel("X02DA-CCDCAM:HEIGHT")
-	elif usedServer==1:
-		chNLines=EpicsChannel("X02DA-CCDCAM2:HEIGHT")
-	else:
-		print "The server " + int(usedServer) + " is not implemented yet!"
+    if usedServer==0:
+        chNLines=EpicsChannel("X02DA-CCDCAM:HEIGHT")
+    elif usedServer==1:
+        chNLines=EpicsChannel("X02DA-CCDCAM2:HEIGHT")
+    else:
+        print "The server " + int(usedServer) + " is not implemented yet!"
 
         numlines=int(chNLines.getValCHK(chNLines.connected))
-	print "Number of lines " + str(numlines)
-        
+    print "Number of lines " + str(numlines)
+
         # magnification
 
         chMag=EpicsChannel("X02DA-ES1-MS:MAGNF")
         magnify = chMag.getValCHK(chMag.connected)
-	magnify = magnify*corr_fact
+    magnify = magnify*corr_fact
 
-	print "Corrected magnification " + str(magnify) 
+    print "Corrected magnification " + str(magnify)
 else:
-	Parser.print_help()
-	sys.exit("Required arguments are missing")
+    Parser.print_help()
+    sys.exit("Required arguments are missing")
 
 chPitch=EpicsChannel("X02DA-ES1-CAM1:PIXL_SIZE.VAL")
 pitchsize = chPitch.getValCHK(chPitch.connected)
@@ -179,17 +180,17 @@ pixelsize = pitchsize / magnify * binning
 blocksize = float(numlines) * pixelsize
 
 if use_blocks:
-	if blocks<0: blocks+=1.1
-	else: blocks-=1.1
-	endpos = startpos+blocks*blocksize
-	print ("Using blocks so end position is calculated:",endpos)
+    if blocks<0: blocks+=1.1
+    else: blocks-=1.1
+    endpos = startpos+blocks*blocksize
+    print ("Using blocks so end position is calculated:",endpos)
 
 if  endpos < startpos :
-	# swap end and startpos! stacked scans always start with top block first.
-	# Top block is visible in field of view when sample stage is lowest in Y
-	# Bottom block ist visible in field of view when stample state is highest in Y
-	# -> startpos must be less than endpos -> swap if this condition is not met
-	(endpos,startpos) = (startpos,endpos)
+    # swap end and startpos! stacked scans always start with top block first.
+    # Top block is visible in field of view when sample stage is lowest in Y
+    # Bottom block ist visible in field of view when stample state is highest in Y
+    # -> startpos must be less than endpos -> swap if this condition is not met
+    (endpos,startpos) = (startpos,endpos)
 
 delta = endpos - startpos
 # compute number of blocks needed to cover the distance between start and stop position;
@@ -207,7 +208,7 @@ else:
 #print "blocksize " + str(blocksize)
 #print "nblocks " + str(nblocks)
 oversizing = float(nblocks) * blocksize - delta;
-unusedlines = int(oversizing / pixelsize) 
+unusedlines = int(oversizing / pixelsize)
 #--------------------------------------------------------------
 # Define relevant epics channels
 
@@ -217,16 +218,16 @@ chEndstation=EpicsChannel("X02DA-ES1-CAM1:ENDST_SEL")
 
 usedEndstation=chEndstation.getValCHK(chEndstation.connected)
 if usedEndstation==0:
-	chYLIN=EpicsChannel("X02DA-ES1-SMP1:TRY-VAL")
-	chYLINM1=EpicsChannel("X02DA-ES1-SMP1:TRY1.DMOV")
-  	chYLINM2=EpicsChannel("X02DA-ES1-SMP1:TRY2.DMOV")
+    chYLIN=EpicsChannel("X02DA-ES1-SMP1:TRY-VAL")
+    chYLINM1=EpicsChannel("X02DA-ES1-SMP1:TRY1.DMOV")
+    chYLINM2=EpicsChannel("X02DA-ES1-SMP1:TRY2.DMOV")
 elif usedEndstation==1:
-   	chYLIN=EpicsChannel("X02DA-ES1-SMP2:TRY-VAL")
-   	chYLINM1=EpicsChannel("X02DA-ES1-SMP2:TRY1.DMOV")
-   	chYLINM2=EpicsChannel("X02DA-ES1-SMP2:TRY2.DMOV")
+    chYLIN=EpicsChannel("X02DA-ES1-SMP2:TRY-VAL")
+    chYLINM1=EpicsChannel("X02DA-ES1-SMP2:TRY1.DMOV")
+    chYLINM2=EpicsChannel("X02DA-ES1-SMP2:TRY2.DMOV")
 else:
-	print "The endstation " + str(usedEndstation) + " is not implemented yet!"
-	
+    print "The endstation " + str(usedEndstation) + " is not implemented yet!"
+
 chFNAME=EpicsChannel("X02DA-SCAN-CAM1:FILPRE")
 chFDIR=EpicsChannel("X02DA-SCAN-CAM1:FILDIR")
 chROI=EpicsChannel("X02DA-SCAN-CAM1:ROI")
@@ -246,7 +247,7 @@ print "Number of Y-blocks to scan........: " + str(nblocks)
 print "size of the Y-block ..............: " + str(blocksize) + " microns"
 print "Total number of lines to scan ....: " + str(numlines * nblocks )
 print "Total number of lines requested ..: " + str(numlines * nblocks - unusedlines )
-print 
+print
 
 
 newfileprefix = ""
@@ -257,67 +258,67 @@ lastscan=0
 while i<nblocks:
 #for i in range(0,nblocks):
 
-	# Check beamline status
-	beam_dump=0
-	previous=0
+    # Check beamline status
+    beam_dump=0
+    previous=0
 
         if testonly != 1:
-        	CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
-        	AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
-        	Interlock=chInterlock.getValCHK(chInterlock.connected)
+            CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
+            AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
+            Interlock=chInterlock.getValCHK(chInterlock.connected)
 
-        	while (CurrentStatus <= (CurrentStart-0.05*CurrentStart) or Interlock==1 or AbsorberStatus==0):
-			beam_dump=1
-			previous=1
-        		time.sleep(0.5)
-        		CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
-        		AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
-        		Interlock=chInterlock.getValCHK(chInterlock.connected)
-		
-			if (CurrentStatus >= (CurrentStart-0.05*CurrentStart) and Interlock==0 and AbsorberStatus==0):
-				print "\nThe absorber has been closed by the interlock!!!"
-        			chAbsorberStatus.putValCHK(1,chAbsorberStatus.connected)
-         			print "Waiting 60s for thermal compensation after the absorber has been closed ...\n"
-        			time.sleep(60)
+            while (CurrentStatus <= (CurrentStart-0.05*CurrentStart) or Interlock==1 or AbsorberStatus==0):
+            beam_dump=1
+            previous=1
+                time.sleep(0.5)
+                CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
+                AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
+                Interlock=chInterlock.getValCHK(chInterlock.connected)
 
-		if beam_dump==1:
-			beam_dump=0
-			if i!=0:
-				if lastscan==0:
-					i=i-1
-				else:
-					lastscan=0
-				print "Previous scan is done again!"
-			else:
-				previous=0
-		
+            if (CurrentStatus >= (CurrentStart-0.05*CurrentStart) and Interlock==0 and AbsorberStatus==0):
+                print "\nThe absorber has been closed by the interlock!!!"
+                    chAbsorberStatus.putValCHK(1,chAbsorberStatus.connected)
+                    print "Waiting 60s for thermal compensation after the absorber has been closed ...\n"
+                    time.sleep(60)
+
+        if beam_dump==1:
+            beam_dump=0
+            if i!=0:
+                if lastscan==0:
+                    i=i-1
+                else:
+                    lastscan=0
+                print "Previous scan is done again!"
+            else:
+                previous=0
+
         print "************************************************************"
-        
+
         print "Settings for block number..: " + str(i+1)
-        
+
         #Calculate initial position and corresponding filename
         position=startpos+i*blocksize
-	if previous==0:
-	        newROI="B"+str( i + 1 )
-        	newfileprefix=fileprefix+"_B"+str( i + 1 ) + "_"
-	else:
-		previous=0
-	        newROI=newROI + "b"
-		newfileprefix=fileprefix + "_" + newROI + "_"
-		#newfileprefix=newfileprefix + "b"
+    if previous==0:
+            newROI="B"+str( i + 1 )
+            newfileprefix=fileprefix+"_B"+str( i + 1 ) + "_"
+    else:
+        previous=0
+            newROI=newROI + "b"
+        newfileprefix=fileprefix + "_" + newROI + "_"
+        #newfileprefix=newfileprefix + "b"
 
         #Set filename
-	if testonly == 1 :
-		print "New file prefix...................: " + newfileprefix
-        	print "Block position....................: " + str(position)
-		i=i+1
-		#if i + 1 == nblocks :
-		#	print "Scan endposition at line ..........: " + str(numlines - unusedlines)
-		#else :
-		#	print "Scan endposition at line ..........: "
-		continue
-	chROI.putValCHK(newROI,chROI.connected)
-	print "New file prefix...................: " + newfileprefix
+    if testonly == 1 :
+        print "New file prefix...................: " + newfileprefix
+            print "Block position....................: " + str(position)
+        i=i+1
+        #if i + 1 == nblocks :
+        #   print "Scan endposition at line ..........: " + str(numlines - unusedlines)
+        #else :
+        #   print "Scan endposition at line ..........: "
+        continue
+    chROI.putValCHK(newROI,chROI.connected)
+    print "New file prefix...................: " + newfileprefix
         #Wait 5 seconds for postfix to be set...!!!
         time.sleep(5)
 
@@ -325,88 +326,88 @@ while i<nblocks:
         print "Move YLIN to position.............: " + str(position)
         chYLIN.putValCHK(position,chYLIN.connected)
         print "Wait for Y motors ... "
-	moved1 = chYLINM1.getValCHK(chYLINM1.connected)
-	moved2 = chYLINM2.getValCHK(chYLINM2.connected)
-	while not moved1 or not moved2 :
-		time.sleep(1)
-		moved1 = chYLINM1.getValCHK(chYLINM1.connected)
-		moved2 = chYLINM2.getValCHK(chYLINM2.connected)
+    moved1 = chYLINM1.getValCHK(chYLINM1.connected)
+    moved2 = chYLINM2.getValCHK(chYLINM2.connected)
+    while not moved1 or not moved2 :
+        time.sleep(1)
+        moved1 = chYLINM1.getValCHK(chYLINM1.connected)
+        moved2 = chYLINM2.getValCHK(chYLINM2.connected)
 
         # Wait 10 seconds for motor moving...Hardcoded!!!
         # time.sleep(10)
-        
+
         # Check beamline status
         CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
         AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
         Interlock=chInterlock.getValCHK(chInterlock.connected)
 
         while (CurrentStatus <= (CurrentStart-0.05*CurrentStart) or Interlock==1 or AbsorberStatus==0):
-        	time.sleep(0.5)
-        	CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
-        	AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
-        	Interlock=chInterlock.getValCHK(chInterlock.connected)
-		
-		if (CurrentStatus >= (CurrentStart-0.05*CurrentStart) and Interlock==0 and AbsorberStatus==0):
-			print "\nThe absorber has been closed by the interlock!!!"
-        		chAbsorberStatus.putValCHK(1,chAbsorberStatus.connected)
-         		print "Waiting 60s for thermal compensation after the absorber has been closed ...\n"
-        		time.sleep(60)
-	
+            time.sleep(0.5)
+            CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
+            AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
+            Interlock=chInterlock.getValCHK(chInterlock.connected)
+
+        if (CurrentStatus >= (CurrentStart-0.05*CurrentStart) and Interlock==0 and AbsorberStatus==0):
+            print "\nThe absorber has been closed by the interlock!!!"
+                chAbsorberStatus.putValCHK(1,chAbsorberStatus.connected)
+                print "Waiting 60s for thermal compensation after the absorber has been closed ...\n"
+                time.sleep(60)
+
         # Start tomoscan
         print "Acquiring tomo data for block " + str(i+1) + "....."
         chTrg.putValCHK(1,chTrg.connected)
-        
+
         waitflag = 1
-        
+
         while waitflag == 1:
                 time.sleep(1)
                 scanstatus=chTrg.getValCHK(chTrg.connected)
-                
+
                 if scanstatus == 0:
                         waitflag = 0
                 else:
                         waitflag = 1
-                        
+
         logpath = chFDIR.getValCHK(chFDIR.connected)
-	logfile = logpath + "/tif/" + newfileprefix + ".log"
+    logfile = logpath + "/tif/" + newfileprefix + ".log"
         print "************************************************************"
-	openlogfile = 0
-	try :
-		logfile = open(logfile,"a")
-		openlogfile = 1
-        	loglinetext =             "\n------------------------------------------------------------\n"
-		loglinetext = loglinetext + "Scan start postion : " + str( startpos ) + "\n"
-		loglinetext = loglinetext + "Scan end postion : " + str( endpos ) + "\n"
-		loglinetext = loglinetext + "Block position : " + str(position) + "\n"
-		loglinetext = loglinetext + "Block number : " + str( i + 1 ) + "/" + str(nblocks) + "\n"
-		loglinetext = loglinetext + "Block size : " + str(blocksize) + "\n"
-		loglinetext = loglinetext + "Number of lines in block : " + str(numlines) + "\n"
-		loglinetext = loglinetext + "Total number of scanned lines : " + str(numlines * ( i + 1 ) ) + "\n"
-		loglinetext = loglinetext + "Total number of lines requested : " + str(numlines * ( i + 1 ) - unusedlines ) + "\n"
-		loglinetext = loglinetext + "Scan end position at line : " 
-		if i + 1 == nblocks :
-			loglinetext = loglinetext + str(numlines - unusedlines)
-		loglinetext = loglinetext + "\n"
-        	loglinetext = loglinetext + "------------------------------------------------------------\n"
-		logfile.write(loglinetext)
-		logfile.close()
-	except :
-		if openlogfile == 1 :
-			logfile.close()
-			
+    openlogfile = 0
+    try :
+        logfile = open(logfile,"a")
+        openlogfile = 1
+            loglinetext =             "\n------------------------------------------------------------\n"
+        loglinetext = loglinetext + "Scan start postion : " + str( startpos ) + "\n"
+        loglinetext = loglinetext + "Scan end postion : " + str( endpos ) + "\n"
+        loglinetext = loglinetext + "Block position : " + str(position) + "\n"
+        loglinetext = loglinetext + "Block number : " + str( i + 1 ) + "/" + str(nblocks) + "\n"
+        loglinetext = loglinetext + "Block size : " + str(blocksize) + "\n"
+        loglinetext = loglinetext + "Number of lines in block : " + str(numlines) + "\n"
+        loglinetext = loglinetext + "Total number of scanned lines : " + str(numlines * ( i + 1 ) ) + "\n"
+        loglinetext = loglinetext + "Total number of lines requested : " + str(numlines * ( i + 1 ) - unusedlines ) + "\n"
+        loglinetext = loglinetext + "Scan end position at line : "
+        if i + 1 == nblocks :
+            loglinetext = loglinetext + str(numlines - unusedlines)
+        loglinetext = loglinetext + "\n"
+            loglinetext = loglinetext + "------------------------------------------------------------\n"
+        logfile.write(loglinetext)
+        logfile.close()
+    except :
+        if openlogfile == 1 :
+            logfile.close()
+
         # Check beamline status
 
         if (i==nblocks-1):
-        	CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
-        	AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
-        	Interlock=chInterlock.getValCHK(chInterlock.connected)
-        	if (CurrentStatus <= (CurrentStart-0.05*CurrentStart) or Interlock==1 or AbsorberStatus==0):
- 			print "Last scan needs to be repeated!"
-			i=i-1
-			lastscan=1			
+            CurrentStatus=chRingCurrent.getValCHK(chRingCurrent.connected)
+            AbsorberStatus=chAbsorberStatus.getValCHK(chAbsorberStatus.connected)
+            Interlock=chInterlock.getValCHK(chInterlock.connected)
+            if (CurrentStatus <= (CurrentStart-0.05*CurrentStart) or Interlock==1 or AbsorberStatus==0):
+            print "Last scan needs to be repeated!"
+            i=i-1
+            lastscan=1
 
         i=i+1
-	
+
 #Set ROI channel back to empty
 ROI=""
 chROI.putValCHK(ROI,chROI.connected)
