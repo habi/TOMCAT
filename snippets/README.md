@@ -1,6 +1,6 @@
 # Handy snippets
 Some of the snippets (for convenience) will be left on gist with hard links in the [README](README.md).
-The names of the files should be descriptive, otherwise just ask!
+The [names of the files]() should be descriptive, otherwise just ask!
 You'll find the first author of each script in its header...
 
 ## Touch, Reconstruct, Compress, and Send via Email
