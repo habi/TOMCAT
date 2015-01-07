@@ -1,5 +1,5 @@
 # Handy snippets
-Some of the snippets (for convience) will be left on gist with hard links in the [README](README.md).
+Some of the snippets (for convenience) will be left on gist with hard links in the [README](README.md).
 The names of the files should be descriptive, otherwise just ask!
 You'll find the first author of each script in its header...
 
@@ -8,4 +8,4 @@ You'll find the first author of each script in its header...
   - `touch` (prevent deletion)
   - perform reconstruction (using standard parameters)
   - compress (into a single tar archive with up to 10x size improvements), and
-  - send the files using the [CIFEX system of the ETHZ](https://cifex.ethz.ch/) (up to 300GB/day, requires ETH login for sender (but not reciever)).
+  - send the files using the [CIFEX system of the ETHZ](https://cifex.ethz.ch/) (up to 300GB/day, requires ETH login for sender (but not receiver)).

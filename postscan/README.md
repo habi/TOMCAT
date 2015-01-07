@@ -1,7 +1,7 @@
 # Post-scan scripts
 ## "Image" processing, viewing and assessing data
 - [`ComputeSNR.py`]() can be used to calculate the Signal-to-Noise (or contrast-to-noise) ratio in images.
-- [`multiscanViewer.py`]() can be used to quockly view one reconstructed slice of several datasets.
+- [`multiscanViewer.py`]() can be used to quickly view one reconstructed slice of several data sets.
 - [`PaganinIterator.py`]() can be used to (relatively) quickly submit a bunch of reconstructions with different δ and β values for the [Paganin phase retrieval](http://doi.org/10.1046/j.1365-2818.2002.01010.x).
   The script prepares the command-line calls to the SGE queue and submits them.
 - [`PaganinPlotter.py`]() can be used to quickly plot said δ and β values from the [CXRO](http://henke.lbl.gov/optical_constants/) database.
@@ -10,7 +10,7 @@
 - [`RotationCenterIterator.py`]() calculates several rotation centers of a single slice.
   This is useful when the automatic center finding algorithm does not work and you'd like to quickly check several different rotation centers.
 - [`SampleStatus.py`]() shows the status of all the samples measured, the number of projections/reconstructed slices, the estimated center, and center used for reconstruction.
-    It is a useful way of keeping track of all the samples and which have been submitted and reconstruced already. 
+    It is a useful way of keeping track of all the samples and which have been submitted and reconstructed already. 
 - [`StackedScanOverlapFinder.py`]() helps you to define the overlap for stacked scan.
   Sometimes the overlap from starting a [stacked scan](../scan/stacked_scan.py)] is not what you expect it to be.
   This is cumbersome to figure out after the fact.
@@ -30,12 +30,12 @@
 - [`pipelineRecon.bash`]() submits samples to the [SGE](http://en.wikipedia.org/wiki/Oracle_Grid_Engine) queue.
 
 ### Fast tomography
-The `multi-*` family of files are used for reconstrucitons of datasets from fast tomography.
+The `multi-*` family of files are used for reconstructions of datasets from fast tomography.
 Ask Rajmund for details on those.
 
 ## Reconstruction
 - The `grecoman` subfolder is a link to [Gorans Graphical Reconstruction Manager repository](https://github.com/gnudo/grecoman).
-  Updates to his repositry can be pulled with `git submodule foreach git pull origin master && git pull bitbucket master && git submodule update --init --recursive`.
+  Updates to his repository can be pulled with `git submodule foreach git pull origin master && git pull bitbucket master && git submodule update --init --recursive`.
   This is done from time to time, so just checking out this repository recursively should lead to a workable state.
 
 ## Archival
