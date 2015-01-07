@@ -1,7 +1,8 @@
 # Handy snippets
-Some of the snippets (for convenience) will be left on gist with hard links in the [README](README.md).
 The [names of the files]() should be descriptive, otherwise just ask!
 You'll find the first author of each script in its header...
+
+Some of the snippets are (for convenience) not in this repository, but will be left as [Gists on Github](https://gist.github.com/) with hard links in the [README](README.md) file.
 
 ## Touch, Reconstruct, Compress, and Send via Email
 - [These scripts](https://gist.github.com/kmader/451d84937014b75368db) can be used to
