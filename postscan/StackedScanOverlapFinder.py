@@ -9,40 +9,44 @@ mean square errorto the options.Percent top images from stack N+1.
 """
 
 from __future__ import division
-import glob
+import platform
 import os
-import matplotlib
-import matplotlib.pyplot as plt
+import glob
+from optparse import OptionParser
 import numpy
 import time
 import gc
-from optparse import OptionParser
 import sys
+if 'cons' in platform.node():
+    # Set up a more recent version of matplotlib by loading EPD. This helps
+    # with loading 16bit tiffs, since matplotlib versions < 1.00 cannot
+    # easily read them
+    os.system('module load xbl/epd_free/7.3-2-2013.06')
+import matplotlib
+import matplotlib.pyplot as plt
+
+# clear the commandline
+os.system('clear')
+
+print 'We are running matplotlib version', matplotlib.__version__, 'on', \
+    platform.node()
 
 
-def readDMP(fileName):
-    '''
+def readDMP(filename):
+    """
     Opens and reads DMP file.
     Returns numpy ndarray.
     From Martin Nyvlts DMP reader, available on
     intranet.psi.ch/wiki/bin/viewauth/Tomcat/BeamlineManual#The_DMP_file_format
-    '''
-
-    fd = open(fileName, 'rb')
-
-    #datatype is unsigned short
+    """
+    fd = open(filename, 'rb')
     datatype = 'h'
     numberOfHeaderValues = 3
-
     headerData = numpy.fromfile(fd, datatype, numberOfHeaderValues)
-
     imageShape = (headerData[1], headerData[0])
-
     imageData = numpy.fromfile(fd, numpy.float32, -1)
     imageData = imageData.reshape(imageShape)
-
     fd.close()
-
     return imageData
 
 
@@ -74,8 +78,36 @@ def bold(msg):
     """
     return u'\033[1m%s\033[0m' % msg
 
-# clear the commandline
-os.system('clear')
+
+def myLogger(Folder, LogFileName):
+    """
+    Since logging in a loop does always write to the first instaniated file,
+    we make a little wrapper around the logger function to write to a defined
+    log file.
+    Based on http://stackoverflow.com/a/2754216/323100
+    """
+    import logging
+    import os
+    logger = logging.getLogger(LogFileName)
+    # either set INFO or DEBUG
+    # logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(os.path.join(Folder, LogFileName), 'w')
+    logger.addHandler(handler)
+    return logger
+
+
+def normalizeimage(img, depth=1, verbose=False):
+    """Normalize image to chosen bit depth"""
+    if verbose:
+        print 'Normalizing image from [' + str(numpy.min(img)) + ':' +\
+              str(numpy.max(img)) + '] to',
+        normalizedimage = ((img - numpy.min(img)) * (depth / (numpy.max(img) -
+                                                              numpy.min(img))))
+    if verbose:
+        print '[' + str(numpy.min(normalizedimage)) + ':' +\
+              str(numpy.max(normalizedimage)) + ']'
+    return normalizedimage
 
 # Use Pythons Optionparser to define and read the options, and also
 # give some help to the user
@@ -100,27 +132,6 @@ parser.add_option('-v', '--verbose', dest='Verbose',
                   metavar=1)
 (options, args) = parser.parse_args()
 
-
-def myLogger(Folder, LogFileName):
-    """
-    Since logging in a loop does always write to the first instaniated file,
-    we make a little wrapper around the logger function to write to a defined
-    log file.
-    Based on http://stackoverflow.com/a/2754216/323100
-    """
-    import logging
-    import os
-    logger = logging.getLogger(LogFileName)
-    # either set INFO or DEBUG
-    #~ logger.setLevel(logging.DEBUG)
-    logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(os.path.join(Folder, LogFileName), 'w')
-    logger.addHandler(handler)
-    return logger
-
-#~ options.Directory = '/sls/X02DA/data/e15171/Data10/disk1/fish1b_A_z265_B1_'
-#~ options.Directory = '/sls/X02DA/data/e15171/Data10/disk1/Cand2_265_a_B1_'
-
 # show the help if necessary parameters are missing
 if options.Directory is None:
     parser.print_help()
@@ -144,53 +155,58 @@ print 'Looking for all stacked scans of', bold(SampleBaseName), 'in', \
     bold(StartingFolder)
 NumberOfStacks = 1
 while os.path.exists(os.path.join(StartingFolder,
-    SampleBaseName + '_B' + str(NumberOfStacks + 1) + '_/')):
+                                  SampleBaseName + '_B' +
+                                  str(NumberOfStacks + 1) + '_/')):
     NumberOfStacks += 1
     if options.Verbose:
-        print 'I also found', os.path.basename(os.path.join(StartingFolder,
-            SampleBaseName + '_B' + str(NumberOfStacks)))
+        print 'I also found',\
+            os.path.basename(os.path.join(StartingFolder, SampleBaseName +
+                                          '_B' + str(NumberOfStacks)))
 print 'Found a total of', NumberOfStacks, 'stacked scans to go through.'
 print
 
-# Grab directory of reconstructions.
-# Account for the case that there might be multiple ones
-if options.Verbose:
-    print 'Looking for folders with reconstructions in', \
-        bold(os.path.basename(options.Directory))
-RecDirectories = glob.glob(os.path.join(options.Directory, '*rec*'))
-RecDirectories = [os.path.basename(folder) for folder in RecDirectories]
-if len(RecDirectories) > 1:
-    print 'I found multiple directories with reconstructions.',
-    RecDirectory = AskUser('Which one shall I use?', RecDirectories)
-else:
+if not options.Reconstructions:
+    # Grab directory of reconstructions.
+    # Account for the case that there might be multiple ones
     if options.Verbose:
-        print 'I only found one rec folder'
-    RecDirectory = RecDirectories[0]
-print 'Working with the reconstructions in the rec folder', \
-    bold(os.path.basename(RecDirectory))
+        print 'Looking for folders with reconstructions in', \
+            bold(os.path.basename(options.Directory))
+    RecDirectories = glob.glob(os.path.join(options.Directory, '*rec*'))
+    RecDirectories = [os.path.basename(folder) for folder in RecDirectories]
+    if len(RecDirectories) > 1:
+        print 'I found multiple directories with reconstructions.',
+        RecDirectory = AskUser('Which one shall I use?', RecDirectories)
+    else:
+        if options.Verbose:
+            print 'I only found one rec folder'
+        RecDirectory = RecDirectories[0]
+    print 'Working with the reconstructions in the rec folder', \
+        bold(os.path.basename(RecDirectory))
 
-# Decide what to do
-if 'DMP' in RecDirectory:
-    options.Reconstructions = 'DMP'
-elif '16' in RecDirectory:
-    options.Reconstructions = '16bit.tif'
-elif '8' in RecDirectory:
-    options.Reconstructions = '8bit.tif'
-
-if options.Reconstructions is not 'DMP':
-    print 'Working with', options.Reconstructions, \
-        'images is not implemented yet, please choose a DMP folder'
-    # TODO: Implement reading of TIF files
-    sys.exit(1)
+    # Decide what to do
+    if 'DMP' in RecDirectory:
+        options.Reconstructions = 'DMP'
+    elif '16' in RecDirectory:
+        options.Reconstructions = '16bit.tif'
+    elif '8' in RecDirectory:
+        options.Reconstructions = '8bit.tif'
+else:
+    RecDirectory = os.path.basename(glob.glob(os.path.join(
+        options.Directory, '*' + options.Reconstructions + '*'))[0])
+    # add '.tif' for 8 or 16 bit case, so we can easily generate the filename
+    if 'DMP' not in options.Reconstructions:
+        options.Reconstructions += '.tif'
 
 # Count number of files in rec folder
 # TODO: parse logfile instead of counting files
 for CurrentStack in range(1, NumberOfStacks):
     Stack = os.path.join(StartingFolder,
-        SampleBaseName + '_B' + str(CurrentStack) + '_', RecDirectory)
-NumberOfReconstructions = len(glob.glob(os.path.join(Stack,
-    '*.' + options.Reconstructions)))
-print 'We found', NumberOfReconstructions, \
+                         SampleBaseName + '_B' + str(CurrentStack) + '_',
+                         RecDirectory)
+NumberOfReconstructions = len(glob.glob(os.path.join(Stack, '*.' +
+                                                     options.Reconstructions)))
+
+print 'We found', NumberOfReconstructions,\
     'reconstructions in the rec folder of the first stack.'
 print 'We will check the top', \
     str(int(NumberOfReconstructions * options.Percent / 100)), \
@@ -199,9 +215,11 @@ print 'We will check the top', \
 
 for StackNumber in range(1, NumberOfStacks):
     TopStack = os.path.join(StartingFolder,
-        SampleBaseName + '_B' + str(StackNumber) + '_', RecDirectory)
+                            SampleBaseName + '_B' + str(StackNumber) + '_',
+                            RecDirectory)
     BottomStack = os.path.join(StartingFolder,
-        SampleBaseName + '_B' + str(StackNumber + 1) + '_', RecDirectory)
+                               SampleBaseName + '_B' + str(StackNumber + 1) +
+                               '_', RecDirectory)
     print 80 * '-'
     print 'Comparing bottom of stack', \
         bold(os.path.basename(os.path.dirname(TopStack))), \
@@ -209,21 +227,27 @@ for StackNumber in range(1, NumberOfStacks):
         bold(os.path.basename(os.path.dirname(BottomStack)))
     try:
         logfile = myLogger(BottomStack,
-            '_stackedscan.merge.B' + str(StackNumber) + '.B' +
-            str(StackNumber + 1) + '.log')
+                           '_stackedscan.merge.B' + str(StackNumber) + '.B' +
+                           str(StackNumber + 1) + '.log')
     except:
-        print 'Cannot write to', os.path.join(BottomStack,
-            '_stackedscan.merge.B' + str(StackNumber) + '.B' +
-            str(StackNumber + 1) + '.log')
+        print 'Cannot write to',\
+            os.path.join(BottomStack,
+                         '_stackedscan.merge.B' + str(StackNumber) + '.B' +
+                         str(StackNumber + 1) + '.log')
         print 'Does its directory exist?'
         sys.exit(1)
     logfile.info('Log file for stacked scan merging, performed on %s',
-        time.strftime('%d.%m.%Y at %H:%M:%S'))
+                 time.strftime('%d.%m.%Y at %H:%M:%S'))
     logfile.info(80 * '-')
     TopStackImageFilename = os.path.join(TopStack,
-        SampleBaseName + '_B' + str(StackNumber) + '_' +
-        str(NumberOfReconstructions) + '.rec.' + options.Reconstructions)
-    TopStackImage = readDMP(TopStackImageFilename)
+                                         SampleBaseName + '_B' + str(
+                                             StackNumber) + '_' + str(
+                                             NumberOfReconstructions) +
+                                         '.rec.' + options.Reconstructions)
+    if 'DMP' in options.Reconstructions:
+        TopStackImage = readDMP(TopStackImageFilename)
+    else:
+        TopStackImage = normalizeimage(plt.imread(TopStackImageFilename))
     logfile.info('Comparing ' + os.path.basename(TopStackImageFilename))
 
     # Prepare image display
@@ -239,9 +263,14 @@ for StackNumber in range(1, NumberOfStacks):
     # Go through each image to compare
     for image in range(1, int(NumberOfImagesToCheck)):
         CompareImageFilename = os.path.join(BottomStack,
-            SampleBaseName + '_B' + str(StackNumber + 1) + '_' +
-            str(image).zfill(3) + '.rec.' + options.Reconstructions)
-        CompareImage = readDMP(CompareImageFilename)
+                                            SampleBaseName + '_B' +
+                                            str(StackNumber + 1) + '_' +
+                                            str(image).zfill(3) + '.rec.' +
+                                            options.Reconstructions)
+        if 'DMP' in options.Reconstructions:
+            CompareImage = readDMP(CompareImageFilename)
+        else:
+            CompareImage = normalizeimage(plt.imread(CompareImageFilename))
         # Show current image to compare
         plt.subplot(232)
         plt.imshow(CompareImage, cmap='gray')
@@ -252,49 +281,65 @@ for StackNumber in range(1, NumberOfStacks):
         MeanSquareErrorVector[image] = (DifferenceImage ** 2).mean()
         # Log findings
         logfile.info('with ' + os.path.basename(CompareImageFilename) +
-            ' gives a mean square error of %e' % MeanSquareErrorVector[image])
-        # Show image with the currently least difference
+                     ' gives a mean square error of %e' %
+                     MeanSquareErrorVector[image])
+        # Show image with the currently lowest MSE
         plt.subplot(233)
         if MeanSquareErrorVector[image] == numpy.nanmin(MeanSquareErrorVector):
             plt.imshow(DifferenceImage, cmap='gray')
-            plt.title(('\n').join([
-                'Current best MSE (%.3e) is from' % numpy.nanmin(
+            plt.title('\n'.join([
+                'Current lowest MSE (%.3e) is from' % numpy.nanmin(
                     MeanSquareErrorVector),
                 os.path.basename(CompareImageFilename)]))
-
+            CurrentBestImageName = os.path.basename(CompareImageFilename)
         # Show plot with found differences
         plt.subplot(212)
         plt.cla()
-        plt.plot(MeanSquareErrorVector, '-o')
+        plt.plot(MeanSquareErrorVector, linestyle='-', marker='None',
+                 color='b')
+        plt.plot(numpy.ndarray.tolist(MeanSquareErrorVector).index(
+            numpy.nanmin(MeanSquareErrorVector)), numpy.nanmin(
+            MeanSquareErrorVector), marker='o', color='b')
         plt.xlim([1, NumberOfImagesToCheck])
         plt.ylim(ymin=0)
         plt.ylabel('Mean square error')
         plt.xlabel('Image to check')
         CurrentTitle = 'Checking image', str(image), 'of', \
-            str(int(NumberOfImagesToCheck))
+            str(int(NumberOfImagesToCheck)), '(current best at image', \
+            str(numpy.ndarray.tolist(MeanSquareErrorVector).index(
+                numpy.nanmin(MeanSquareErrorVector))) + ')'
         plt.title(' '.join(CurrentTitle))
         plt.draw()
         # Try to save some memory
         del CompareImage
         del DifferenceImage
         gc.collect()
+    if options.Verbose:
+        print '%d/%d: Current lowest MSE (%.1e) from ' \
+              '%s\r' % (image, NumberOfImagesToCheck,
+                        numpy.nanmin(MeanSquareErrorVector),
+                        CurrentBestImageName)
+    else:
         # Clean command-line with "\r" and "flush". From http://is.gd/HCaDv9
-        sys.stdout.write('%d/%d: Current best MSE (%.1e) from %s\r' % (image,
-            NumberOfImagesToCheck, numpy.nanmin(MeanSquareErrorVector),
-            os.path.basename(CompareImageFilename)))
+        sys.stdout.write('%d/%d: Current lowest MSE (%.1e) from %s\r' % (
+            image, NumberOfImagesToCheck,
+            numpy.nanmin(MeanSquareErrorVector), CurrentBestImageName))
         sys.stdout.flush()
     plt.savefig(os.path.join(BottomStack,
-        '_stackedscan.difference.B' + str(StackNumber) + '.B' +
-        str(StackNumber + 1) + '.png'), transparent='True')
+                             '_stackedscan.difference.B' + str(StackNumber) +
+                             '.B' + str(StackNumber + 1) + '.png'),
+                transparent='True')
     plt.close()
     # Tell and log which file is best
     # Convert array to list so we can use ".index()" to find the image number
-    BestMatchingImageNumber = numpy.ndarray.tolist(
+    BestMatchingImageNmbr = numpy.ndarray.tolist(
         MeanSquareErrorVector).index(numpy.nanmin(MeanSquareErrorVector))
-    BestMatchingImageFilename = os.path.join(BottomStack,
-            SampleBaseName + '_B' + str(StackNumber + 1) + '_' +
-            str(BestMatchingImageNumber).zfill(3) + '.rec.' +
-            options.Reconstructions)
+    BestMatchingImageFilename = os.path.join(BottomStack, SampleBaseName +
+                                             '_B' + str(StackNumber + 1) +
+                                             '_' +
+                                             str(BestMatchingImageNmbr).zfill(
+                                                 3) + '.rec.' +
+                                             options.Reconstructions)
     print 'Best match between images', \
         bold(os.path.basename(TopStackImageFilename)), 'and', \
         bold(os.path.basename(BestMatchingImageFilename)), \
@@ -302,16 +347,16 @@ for StackNumber in range(1, NumberOfStacks):
             MeanSquareErrorVector)
     logfile.info(80 * '-')
     logfile.info('Best match between ' +
-        os.path.basename(TopStackImageFilename) + ' and ' +
-        os.path.basename(BestMatchingImageFilename) +
-        ' with a mean square error of %e' % numpy.nanmin(
-            MeanSquareErrorVector))
-    print 'Log file written to', os.path.join(BottomStack,
-            '_stackedscan.merge.B' + str(StackNumber) + '.B' +
-            str(StackNumber + 1) + '.log')
-    print 'Image saved to to', os.path.join(BottomStack,
-        '_stackedscan.difference.B' + str(StackNumber) + '.B' +
-        str(StackNumber + 1) + '.png')
+                 os.path.basename(TopStackImageFilename) + ' and ' +
+                 os.path.basename(BestMatchingImageFilename) +
+                 ' with a mean square error of %e' % numpy.nanmin(
+                     MeanSquareErrorVector))
+    print 'Log file written to',\
+        os.path.join(BottomStack, '_stackedscan.merge.B' + str(StackNumber) +
+                     '.B' + str(StackNumber + 1) + '.log')
+    print 'Image saved to to',\
+        os.path.join(BottomStack, '_stackedscan.difference.B' +
+                     str(StackNumber) + '.B' + str(StackNumber + 1) + '.png')
 
 print 80 * '-'
 print 'Done with everything'
