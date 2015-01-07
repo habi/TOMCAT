@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-'''
+"""
 PaganinIterator.py | David Haberthür <david.haberthuer@psi.ch>
 
 Script to reconstruct a sample with different Paganin parameters.
 Very loosely based on Peter Modreggers 'pags' bash script
-'''
+"""
 
 import distutils.util
 import numpy as np

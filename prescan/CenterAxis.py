@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-'''
+"""
 CenterAxis.py | David Haberthür <david.haberthuer@psi.ch>
 
 Script to calculate and set the correct center for the sample stage rotation
 axis. The calculation to do are really easy, but cumbersome to do each time.
-'''
+"""
 
 # Import necessary modules
 import sys
