@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-'''
+"""
 PaganinPlotter.py | David Haberthür <david.haberthuer@psi.ch>
 
 Script to plot the delta and beta values foud in the [CXRO] database,
@@ -10,10 +10,7 @@ and plot it with this script
 
 [CXRO]: http://henke.lbl.gov/optical_constants/
 [Index of Refraction]: http://henke.lbl.gov/optical_constants/getdb2.html
-'''
-
-# 2013-11-27: First version:
-# 2013-11-28: Updated to show selected values
+"""
 
 from optparse import OptionParser
 import sys

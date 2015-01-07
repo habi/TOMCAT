@@ -1,5 +1,6 @@
 #!/usr/bin/python
-'''
+
+"""
 Multiscan Runner
  Kevin Mader (kevin.mader@gmail.com)
 
@@ -7,7 +8,8 @@ Multiscan Runner
   ! Note SPEC must already be running and waiting for the go channel to be set
     python ~/beamline-scripts/scan/multiscan.py 15 10
 
-'''
+"""
+
 from glob import glob
 from PIL import Image
 import os,sys
@@ -31,7 +33,7 @@ baseName=fileChannel.getVal()
 if(startChannel.getVal()>0):
 	print "Scan is currently running, please wait for it to finish..."
 	exit(0)
-	
+
 
 def runScan(curScan,sleepAfterScan=0):
 	fileChannel.putVal(baseName+"_%03d" % (curScan))
@@ -46,5 +48,5 @@ def runScan(curScan,sleepAfterScan=0):
 
 for i in range(scanCount): runScan(i,sleepTime)
 
-	
+
 

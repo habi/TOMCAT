@@ -1,17 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
-'''
+
+"""
 Multiscan Viewer
  Kevin Mader (kevin.mader@gmail.com)
 
- Takes a given slice out of a folder of reconstructions and makes a folder filled with those images. Designed originally for multiple scans done 
+ Takes a given slice out of a folder of reconstructions and makes a folder filled with those images. Designed originally for multiple scans done
  with the ManyScanReconHDF5.cmd but has been generalized to work with any prefix
  Input parameter is slice to take, a negative number takes slices every input slices between 0 and 3000 to make multiple
  In the sample directory run
     python ~/beamline-scripts/postscan/multiscanViewer.py -l 1601
  To run for all samples
  for cdir in *; do cd $cdir; python ~/beamline-scripts/postscan/multiscanViewer.py 1200; cd ..; done
-'''
+"""
 
 from optparse import OptionParser
 from glob import glob
@@ -33,8 +34,8 @@ parser.add_option('-m', '--multiplefolders',dest='multiple',help='Measurements a
 
 # starting offset
 sOffset = float(options.initial_angle)
-# offset between scans (!! caution in Scientific Linux mindblowingly shitty python/PIL 
-# implementation a rotation of exactly 180 rotate(180) on 16 bit integer images you get garbage 
+# offset between scans (!! caution in Scientific Linux mindblowingly shitty python/PIL
+# implementation a rotation of exactly 180 rotate(180) on 16 bit integer images you get garbage
 angOffset = float(options.angle)
 multiple = options.multiple
 sliceNumber = int(options.slice)
@@ -51,20 +52,20 @@ def generate_slices(folder_prefix,sliceNumber):
 	outDirName="slicedir_%03d" % (sliceNumber)
 	# read images
 	list_cmd=folder_prefix+"*/*%03d.rec*.tif" % (sliceNumber)
-	
+
 	imglist=glob(list_cmd)
 	print (list_cmd,imglist)
-	if len(imglist)<1: 
+	if len(imglist)<1:
 		print "No Images found"
 		return
 	nameIndex=-2
 	# extract the scan number from the path (custom to multiple scans made with kevins script)
-	
-	try: 
-	    if multiple: 
+
+	try:
+	    if multiple:
 	    	scanNumber=range(len(imglist))
 		scanNames=map(lambda x: x.split('/')[-3],imglist) # just the folder name
-	    else: 
+	    else:
 	    	scanNumber=map(lambda x: int(x.split('/')[-2].split('_')[-1]),imglist) # a scan number extracted from the folder
 		scanNames=map(lambda i: '%03d' % i,scanNumber)
 	except:

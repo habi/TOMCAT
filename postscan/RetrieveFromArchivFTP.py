@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-'''
-ReplaceProjections.py | David Haberthür <david.haberthuer@psi.ch>
+"""
+RetrieveFromArchivFTP.py | David Haberthür <david.haberthuer@psi.ch>
 
 Script to retrieve a certain sample from the PSI tape archive
-'''
+"""
 
 import sys
 from optparse import OptionParser

@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-'''
+"""
 ReplaceProjections.py | David Haberthür <david.haberthuer@psi.ch>
 
 Script to iteratively test rotation centers.
 Calls 'gridrec_zp_64' on gws-2 with a range on rotation centers.
 Renames the reconstructed slices and calls fiji so one can look at the
 differently reconstructed slices in a stack.
-'''
+"""
 
 import sys
 import os

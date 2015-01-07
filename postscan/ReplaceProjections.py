@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-'''
+"""
 ReplaceProjections.py | David Haberthür <david.haberthuer@psi.ch>
 
 Script to replace darks, flats or projections of one sample with the darks,
 flats or projections of another sample. Made after an user group of David once
 had set the 'out-of-beam'-position too small, so that the sample was still
 visible in the flat images.
-'''
+"""
 
 import sys
 import os
@@ -65,8 +65,13 @@ parser.add_option('-p', '--proj', dest='projections', default=0, action='store_t
     help='Copy the Projections',
     metavar=1)
 parser.add_option('-v', '--verbose', dest='verbose', default=0, action='store_true',
+<<<<<<< Updated upstream
     help='Be really chatty, (Default is off, so the script is quite silent)',
     metavar=1)
+=======
+	help='Be really chatty, (Default is off, so the script is quite silent)',
+	metavar=1)
+>>>>>>> Stashed changes
 parser.add_option('-t', '--test', dest='Test', default=0, action='store_true',
     help='Only do a test-run to see the details, do not actually reconstruct the slices)',
     metavar=1)
@@ -99,8 +104,13 @@ try:
     InputPath = os.path.abspath(options.insample)
     InputSample = os.path.basename(InputPath)
 except:
+<<<<<<< Updated upstream
     print 'I was not able to deduce an Input-Sample from your command.'
     print "Please specify a path like this './samplename/' with the '-i'-option."
+=======
+	print 'I was not able to deduce an Input-Sample from your command.'
+	print "Please specify a path like this './samplename/' with the '-i'-option."
+>>>>>>> Stashed changes
 
 if os.path.exists(os.path.abspath(options.outsample)) == False:
     print '---'
@@ -111,8 +121,13 @@ try:
     OutputPath = os.path.abspath(options.outsample)
     OutputSample = os.path.basename(OutputPath)
 except:
+<<<<<<< Updated upstream
     print 'I was not able to deduce an Output-Sample from your command.'
     print "Please specify a path like this './samplename/' with the '-o'-option."
+=======
+	print 'I was not able to deduce an Output-Sample from your command.'
+	print "Please specify a path like this './samplename/' with the '-o'-option."
+>>>>>>> Stashed changes
 
 # Read Number of Darks, Flats and Projections from Logfile of *Output*-sample
 LogFile2Location = os.path.join(OutputPath,'tif',OutputSample + '.log')
@@ -147,6 +162,7 @@ LogFile1.close()
 print 'For sample',InputSample,'we recorded',Darks1,'darks,',Flats1,'flats and',Projections1,'projections.'
 
 if options.darks==None and options.flats==None and options.projections==None:
+<<<<<<< Updated upstream
     print
     print 'You need to tell me what to do!'
     print "Either specify the '-d' option to copy the darks or "
@@ -172,6 +188,33 @@ if options.projections:
         if query_yes_no('Really copy the projections, even though their number do not match?',default='no')=='no':
             print 'Quitting'
             sys.exit(1)
+=======
+	print
+	print 'You need to tell me what to do!'
+	print "Either specify the '-d' option to copy the darks or "
+	print "or specify the '-f' option to copy the flats or "
+	print "or specify the '-p' option to copy the projections. (Or multiple options...)"
+	sys.exit()
+
+if options.darks:
+	if Darks != Darks1:
+		print 'Number of darks for',InputSample,'(' + str(Darks1) + ') and',OutputSample,'(' + str(Darks) + ') do not match'
+		if query_yes_no('Really copy the darks, even though their number do not match?',default='no')=='no':
+			print 'Quitting'
+			sys.exit(1)
+if options.flats:
+	if Flats != Flats1:
+		print 'Number of flats for',InputSample,'(' + str(Flats1) + ') and',OutputSample,'(' + str(Flats) + ') do not match'
+		if query_yes_no('Really copy the flats, even though their number do not match?',default='no')=='no':
+			print 'Quitting'
+			sys.exit(1)
+if options.projections:
+	if Projections != Projections1:
+		print 'Number of projections for',InputSample,'(' + str(Projections1) + ') and',OutputSample,'(' + str(Projections) + ') do not match'
+		if query_yes_no('Really copy the projections, even though their number do not match?',default='no')=='no':
+			print 'Quitting'
+			sys.exit(1)
+>>>>>>> Stashed changes
 print '---'
 print 'Darks are files',min(range(1,Darks+1)),'-',max(range(1,Darks+1))
 print 'Pre-Flats are files',min(range(Darks+1,Darks+Flats+1)),'-',max(range(Darks+1,Darks+Flats+1))
