@@ -65,82 +65,67 @@ parser.add_option('-p', '--proj', dest='projections', default=0, action='store_t
     help='Copy the Projections',
     metavar=1)
 parser.add_option('-v', '--verbose', dest='verbose', default=0, action='store_true',
-<<<<<<< Updated upstream
     help='Be really chatty, (Default is off, so the script is quite silent)',
     metavar=1)
-=======
-	help='Be really chatty, (Default is off, so the script is quite silent)',
-	metavar=1)
->>>>>>> Stashed changes
 parser.add_option('-t', '--test', dest='Test', default=0, action='store_true',
-    help='Only do a test-run to see the details, do not actually reconstruct the slices)',
-    metavar=1)
+	help='Only do a test-run to see the details, do not actually reconstruct the slices)',
+	metavar=1)
 (options, args) = parser.parse_args()
 
 # show the help if no parameters are given
 if options.insample==None:
-    parser.print_help()
-    print 'Example:'
-    print 'The command below copies the darks and flats from "Sample_A_" to "Sample_B_"'
-    print ''
-    print 'ReplaceProjections.py --insample=Data10/disk3/Sample_A_ --outsample=Data10/disk3/Sample_B_ --darks --flats'
-    print 'or'
-    print 'ReplaceProjections.py -i Sample_A_ -o Sample_B_ -d -f'
-    print ''
-    sys.exit(1)
+	parser.print_help()
+	print 'Example:'
+	print 'The command below copies the darks and flats from "Sample_A_" to "Sample_B_"'
+	print ''
+	print 'ReplaceProjections.py --insample=Data10/disk3/Sample_A_ --outsample=Data10/disk3/Sample_B_ --darks --flats'
+	print 'or'
+	print 'ReplaceProjections.py -i Sample_A_ -o Sample_B_ -d -f'
+	print ''
+	sys.exit(1)
 
 if options.insample and options.outsample==None:
-    print 'You specified an input, but no output-sample.'
-    sys.exit(1)
+	print 'You specified an input, but no output-sample.'
+	sys.exit(1)
 
 # Assemble Directory- and Samplenames
 ## test if the directory exists, if not, tell the user
 if os.path.exists(os.path.abspath(options.insample)) == False:
-    print '---'
-    print 'Input-Directory "' + options.insample + '" not found, please try again with correct path.'
-    print '---'
-    sys.exit(1)
+	print '---'
+	print 'Input-Directory "' + options.insample + '" not found, please try again with correct path.'
+	print '---'
+	sys.exit(1)
 try:
-    InputPath = os.path.abspath(options.insample)
-    InputSample = os.path.basename(InputPath)
+	InputPath = os.path.abspath(options.insample)
+	InputSample = os.path.basename(InputPath)
 except:
-<<<<<<< Updated upstream
-    print 'I was not able to deduce an Input-Sample from your command.'
-    print "Please specify a path like this './samplename/' with the '-i'-option."
-=======
 	print 'I was not able to deduce an Input-Sample from your command.'
 	print "Please specify a path like this './samplename/' with the '-i'-option."
->>>>>>> Stashed changes
-
+	
 if os.path.exists(os.path.abspath(options.outsample)) == False:
-    print '---'
-    print 'Output-Directory "' + options.outsample + '" not found, please try again with correct path.'
-    print '---'
-    sys.exit(1)
+	print '---'
+	print 'Output-Directory "' + options.outsample + '" not found, please try again with correct path.'
+	print '---'
+	sys.exit(1)
 try:
-    OutputPath = os.path.abspath(options.outsample)
-    OutputSample = os.path.basename(OutputPath)
+	OutputPath = os.path.abspath(options.outsample)
+	OutputSample = os.path.basename(OutputPath)
 except:
-<<<<<<< Updated upstream
-    print 'I was not able to deduce an Output-Sample from your command.'
-    print "Please specify a path like this './samplename/' with the '-o'-option."
-=======
 	print 'I was not able to deduce an Output-Sample from your command.'
 	print "Please specify a path like this './samplename/' with the '-o'-option."
->>>>>>> Stashed changes
-
+	
 # Read Number of Darks, Flats and Projections from Logfile of *Output*-sample
 LogFile2Location = os.path.join(OutputPath,'tif',OutputSample + '.log')
 LogFile2 = open(LogFile2Location,'r')
 for line in LogFile2:
-    linelist=line.split()
-    if len(linelist)>0:
-       if (linelist[0]=="Number" and linelist[2]=="projections"):
-            Projections = int(linelist[4])
-       elif (linelist[0]=="Number" and linelist[2]=="darks"):
-            Darks = int(linelist[4])
-       elif (linelist[0]=="Number" and linelist[2]=="flats"):
-            Flats = int(linelist[4])
+	linelist=line.split()
+	if len(linelist)>0:
+   	   if (linelist[0]=="Number" and linelist[2]=="projections"):
+			Projections = int(linelist[4])
+   	   elif (linelist[0]=="Number" and linelist[2]=="darks"):
+     		Darks = int(linelist[4])
+   	   elif (linelist[0]=="Number" and linelist[2]=="flats"):
+      		Flats = int(linelist[4])
 LogFile2.close()
 
 print 'The logfile tells us that'
@@ -150,45 +135,18 @@ print 'For sample',OutputSample,'we recorded',Darks,'darks,',Flats,'flats and',P
 LogFile1Location = os.path.join(InputPath,'tif',InputSample + '.log')
 LogFile1 = open(LogFile1Location,'r')
 for line in LogFile1:
-    linelist=line.split()
-    if len(linelist)>0:
-       if (linelist[0]=="Number" and linelist[2]=="projections"):
-            Projections1 = int(linelist[4])
-       elif (linelist[0]=="Number" and linelist[2]=="darks"):
-            Darks1 = int(linelist[4])
-       elif (linelist[0]=="Number" and linelist[2]=="flats"):
-            Flats1 = int(linelist[4])
+	linelist=line.split()
+	if len(linelist)>0:
+   	   if (linelist[0]=="Number" and linelist[2]=="projections"):
+			Projections1 = int(linelist[4])
+   	   elif (linelist[0]=="Number" and linelist[2]=="darks"):
+     		Darks1 = int(linelist[4])
+   	   elif (linelist[0]=="Number" and linelist[2]=="flats"):
+      		Flats1 = int(linelist[4])
 LogFile1.close()
 print 'For sample',InputSample,'we recorded',Darks1,'darks,',Flats1,'flats and',Projections1,'projections.'
 
 if options.darks==None and options.flats==None and options.projections==None:
-<<<<<<< Updated upstream
-    print
-    print 'You need to tell me what to do!'
-    print "Either specify the '-d' option to copy the darks or "
-    print "or specify the '-f' option to copy the flats or "
-    print "or specify the '-p' option to copy the projections. (Or multiple options...)"
-    sys.exit()
-
-if options.darks:
-    if Darks != Darks1:
-        print 'Number of darks for',InputSample,'(' + str(Darks1) + ') and',OutputSample,'(' + str(Darks) + ') do not match'
-        if query_yes_no('Really copy the darks, even though their number do not match?',default='no')=='no':
-            print 'Quitting'
-            sys.exit(1)
-if options.flats:
-    if Flats != Flats1:
-        print 'Number of flats for',InputSample,'(' + str(Flats1) + ') and',OutputSample,'(' + str(Flats) + ') do not match'
-        if query_yes_no('Really copy the flats, even though their number do not match?',default='no')=='no':
-            print 'Quitting'
-            sys.exit(1)
-if options.projections:
-    if Projections != Projections1:
-        print 'Number of projections for',InputSample,'(' + str(Projections1) + ') and',OutputSample,'(' + str(Projections) + ') do not match'
-        if query_yes_no('Really copy the projections, even though their number do not match?',default='no')=='no':
-            print 'Quitting'
-            sys.exit(1)
-=======
 	print
 	print 'You need to tell me what to do!'
 	print "Either specify the '-d' option to copy the darks or "
@@ -214,7 +172,6 @@ if options.projections:
 		if query_yes_no('Really copy the projections, even though their number do not match?',default='no')=='no':
 			print 'Quitting'
 			sys.exit(1)
->>>>>>> Stashed changes
 print '---'
 print 'Darks are files',min(range(1,Darks+1)),'-',max(range(1,Darks+1))
 print 'Pre-Flats are files',min(range(Darks+1,Darks+Flats+1)),'-',max(range(Darks+1,Darks+Flats+1))
@@ -224,74 +181,74 @@ print '---'
 
 # Copy (or actually symlink) the requested files
 if options.darks:
-    print 'Symlinking',Darks,'darks from',InputSample,'to',OutputSample
-    if query_yes_no('Do you REALLY want to overwrite all darks?',default='no')=='yes':
-        for Dark in range(1,Darks+1):
-            linkcommand = 'ln -sf ' + os.path.join(InputPath,'tif',InputSample + "%.04d" % Dark + '.tif') + ' ' + os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Dark + '.tif')
-            renamecommand = 'rename ' +\
-                os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Dark + '.tif') + ' ' +\
-                os.path.join(OutputPath,'tif','_backup_' + OutputSample + "%.04d" % Dark + '.tif') + ' ' +\
-                os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Dark + '.tif')
-            if options.verbose:
-                print renamecommand
-                print linkcommand
-            if options.Test == False:
-                os.system(renamecommand)
-                os.system(linkcommand)
-        print 'Done with symlinking',Darks,'darks from',InputSample,'to',OutputSample
-    else:
-        print 'Symlinking aborted'
+	print 'Symlinking',Darks,'darks from',InputSample,'to',OutputSample
+	if query_yes_no('Do you REALLY want to overwrite all darks?',default='no')=='yes':
+		for Dark in range(1,Darks+1):
+			linkcommand = 'ln -sf ' + os.path.join(InputPath,'tif',InputSample + "%.04d" % Dark + '.tif') + ' ' + os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Dark + '.tif')
+			renamecommand = 'rename ' +\
+				os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Dark + '.tif') + ' ' +\
+				os.path.join(OutputPath,'tif','_backup_' + OutputSample + "%.04d" % Dark + '.tif') + ' ' +\
+				os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Dark + '.tif')
+			if options.verbose:
+				print renamecommand
+				print linkcommand
+			if options.Test == False:
+				os.system(renamecommand)
+				os.system(linkcommand)
+		print 'Done with symlinking',Darks,'darks from',InputSample,'to',OutputSample
+	else:
+		print 'Symlinking aborted'
 
 if options.flats:
-    print 'Symlinking',Flats,'pre- and',Flats,'post-flats from',InputSample,'to',OutputSample
-    if query_yes_no('Do you REALLY want to overwrite the flats?',default='no')=='yes':
-        for Flat in range(Darks+1,Darks+Flats+1):
-            linkcommand = 'ln -sf ' + os.path.join(InputPath,'tif',InputSample + "%.04d" % Flat + '.tif') + ' ' + os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif')
-            renamecommand = 'rename ' +\
-                os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif') + ' ' +\
-                os.path.join(OutputPath,'tif','_backup_' + OutputSample + "%.04d" % Flat + '.tif') + ' ' +\
-                os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif')
-            if options.verbose:
-                print renamecommand
-                print linkcommand
-            if options.Test == False:
-                os.system(renamecommand)
-                os.system(linkcommand)
-        print 'Done with symlinking',Flats,'pre-flats from',InputSample,'to',OutputSample
-        for Flat in range(Darks+Flats+Projections+1,Darks+Flats+Projections+Flats+1):
-            linkcommand = 'ln -sf ' + os.path.join(InputPath,'tif',InputSample + "%.04d" % Flat + '.tif') + ' ' + os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif')
-            renamecommand = 'rename ' +\
-                os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif') + ' ' +\
-                os.path.join(OutputPath,'tif','_backup_' + OutputSample + "%.04d" % Flat + '.tif') + ' ' +\
-                os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif')
-            if options.verbose:
-                print renamecommand
-                print linkcommand
-            if options.Test == False:
-                os.system(renamecommand)
-                os.system(linkcommand)
-        print 'Done with symlinking',Flats,'post-flats from',InputSample,'to',OutputSample
-    else:
-        print 'Symlinking aborted'
+	print 'Symlinking',Flats,'pre- and',Flats,'post-flats from',InputSample,'to',OutputSample
+	if query_yes_no('Do you REALLY want to overwrite the flats?',default='no')=='yes':
+		for Flat in range(Darks+1,Darks+Flats+1):
+			linkcommand = 'ln -sf ' + os.path.join(InputPath,'tif',InputSample + "%.04d" % Flat + '.tif') + ' ' + os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif')
+			renamecommand = 'rename ' +\
+				os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif') + ' ' +\
+				os.path.join(OutputPath,'tif','_backup_' + OutputSample + "%.04d" % Flat + '.tif') + ' ' +\
+				os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif')
+			if options.verbose:
+				print renamecommand
+				print linkcommand
+			if options.Test == False:
+				os.system(renamecommand)
+				os.system(linkcommand)
+		print 'Done with symlinking',Flats,'pre-flats from',InputSample,'to',OutputSample
+		for Flat in range(Darks+Flats+Projections+1,Darks+Flats+Projections+Flats+1):
+			linkcommand = 'ln -sf ' + os.path.join(InputPath,'tif',InputSample + "%.04d" % Flat + '.tif') + ' ' + os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif')
+			renamecommand = 'rename ' +\
+				os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif') + ' ' +\
+				os.path.join(OutputPath,'tif','_backup_' + OutputSample + "%.04d" % Flat + '.tif') + ' ' +\
+				os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Flat + '.tif')
+			if options.verbose:
+				print renamecommand
+				print linkcommand
+			if options.Test == False:
+				os.system(renamecommand)
+				os.system(linkcommand)
+		print 'Done with symlinking',Flats,'post-flats from',InputSample,'to',OutputSample
+	else:
+		print 'Symlinking aborted'
 
 if options.projections:
-    print 'Symlinking',Projections,'projections from',InputSample,'to',OutputSample
-    if query_yes_no('Do you REALLY want to overwrite the projections?',default='no')=='yes':
-        for Projection in range(Darks+Flats+1,Darks+Flats+Projections+1):
-            linkcommand = 'ln -sf ' + os.path.join(InputPath,'tif',InputSample + "%.04d" % Projection + '.tif') + ' ' + os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Projection + '.tif')
-            renamecommand = 'rename ' +\
-                os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Projection + '.tif') + ' ' +\
-                os.path.join(OutputPath,'tif','_backup_' + OutputSample + "%.04d" % Projection + '.tif') + ' ' +\
-                os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Projection + '.tif')
-            if options.verbose:
-                print renamecommand
-                print linkcommand
-            if options.Test == False:
-                os.system(renamecommand)
-                os.system(linkcommand)
-        print 'Done with symlinking',Projections,'projections from',InputSample,'to',OutputSample
-    else:
-        print 'Symlinking aborted'
+	print 'Symlinking',Projections,'projections from',InputSample,'to',OutputSample
+	if query_yes_no('Do you REALLY want to overwrite the projections?',default='no')=='yes':
+		for Projection in range(Darks+Flats+1,Darks+Flats+Projections+1):
+			linkcommand = 'ln -sf ' + os.path.join(InputPath,'tif',InputSample + "%.04d" % Projection + '.tif') + ' ' + os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Projection + '.tif')
+			renamecommand = 'rename ' +\
+				os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Projection + '.tif') + ' ' +\
+				os.path.join(OutputPath,'tif','_backup_' + OutputSample + "%.04d" % Projection + '.tif') + ' ' +\
+				os.path.join(OutputPath,'tif',OutputSample + "%.04d" % Projection + '.tif')
+			if options.verbose:
+				print renamecommand
+				print linkcommand
+			if options.Test == False:
+				os.system(renamecommand)
+				os.system(linkcommand)
+		print 'Done with symlinking',Projections,'projections from',InputSample,'to',OutputSample
+	else:
+		print 'Symlinking aborted'
 
 print
 print 'Done!'
