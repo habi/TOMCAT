@@ -1,5 +1,8 @@
 #! /usr/bin/env python
-# Fede's stacked_scan combined with some of david's paganiniterator
+
+"""
+Fede's stacked_scan combined with some of david's paganiniterator
+"""
 
 import sys
 import os.path
@@ -8,11 +11,9 @@ import commands
 import math
 import time
 from optparse import OptionParser
-#---------------------------------------------------------------------------
-                          #---------------------------------
-                          #----------------------------------------------
-                          # Make sure we are running at least python level 2.
-                          # CaChannel seems to give troubles otherwise!
+
+# Make sure we are running at least python level 2.
+# CaChannel seems to give troubles otherwise!
 if sys.version[0:1] == "1":
   python2 = commands.getoutput ("type -p python2")
   if python2 == "":
@@ -22,31 +23,20 @@ if sys.version[0:1] == "1":
     os.system ("xkbbell")
     os.system ("xmessage -nearmouse -timeout 30 -buttons '' Python level 2 cannot be found")
     sys.exit (1)
-  #endif
   sys.argv.insert (0, python2)
   os.execv (python2, sys.argv)
-#endif
 if sys.version[0:1] == "1":
   print "\n\aThe loading of a higher level of python seems to have failed!"
   sys.exit (1)
-#endif
-#---------------------------------------------------------------------------
 try:
   from CaChannel import *
 except:
-  #try:
-  #  sys.path.insert (0, os.path.expandvars ("$SLSBASE/sls/lib/python22/CaChannel"))
-  #  from CaChannel import *
-  #except:
   os.system ("xkbbell")
   os.system ("xmessage -nearmouse -timeout 30 -buttons '' CaChannel module cannot be found")
   sys.exit (1)
-  #endtry
-#endtry
 
 from CaChannel import CaChannelException
 
-#---------------------------------------------------------------------------
 
 class EpicsChannel:
     def __init__(self,pvName):
