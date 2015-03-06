@@ -18,8 +18,6 @@ from optparse import OptionParser
 from glob import glob
 from PIL import Image
 import os
-import sys
-import numpy
 
 # Use Pythons Optionparser to define and read the options, and also
 # give some help to the user
@@ -69,9 +67,8 @@ def generate_slices(folder_prefix, sliceNumber):
     if len(imglist) < 1:
         print "No Images found"
         return
-    nameIndex = -2
+    # nameIndex = -2
     # extract the scan number from the path (custom to multiple scans made with kevins script)
-
     try:
         if multiple:
             scanNumber = range(len(imglist))

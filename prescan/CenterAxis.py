@@ -103,10 +103,10 @@ class EpicsChannel:
 
     def getVal(self):
         try:
-                val = self.chan.getw()
+            val = self.chan.getw()
         except:
-                self.connected = 0
-                val = ''
+            self.connected = 0
+            val = ''
         return val
 
     def putVal(self, val):

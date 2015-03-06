@@ -2,11 +2,9 @@
 
 import sys
 import os.path
-import string
 import commands
 import math
 import numpy as np
-import random
 import time
 
 
@@ -138,8 +136,7 @@ else:
     path_arg_at = 1
 
 testonly = 0
-if path_arg_at > 0:
-
+if path_arg_at:
     if len(sys.argv) - path_arg_at < 8:
         print "xx startpos, xx endpos, zz startpos, zz endpos," \
               "y startpos, y endpos, number of horizontal and" \
@@ -578,7 +575,6 @@ while i < nyblocks:
                 k += 1
 
                 # if i + 1 == nblocks :
-
                 #    print "Scan endposition at line ..........: " + str(numlines - unusedlines)
                 # else :
                 #    print "Scan endposition at line ..........: "
