@@ -127,11 +127,11 @@ LogFile2 = open(LogFile2Location, 'r')
 for line in LogFile2:
     linelist = line.split()
     if len(linelist) > 0:
-        if (linelist[0] == "Number" and linelist[2] == "projections"):
+        if linelist[0] == "Number" and linelist[2] == "projections":
             Projections = int(linelist[4])
-        elif (linelist[0] == "Number" and linelist[2] == "darks"):
+        elif linelist[0] == "Number" and linelist[2] == "darks":
             Darks = int(linelist[4])
-        elif (linelist[0] == "Number" and linelist[2] == "flats"):
+        elif linelist[0] == "Number" and linelist[2] == "flats":
             Flats = int(linelist[4])
 LogFile2.close()
 
@@ -146,11 +146,11 @@ LogFile1 = open(LogFile1Location, 'r')
 for line in LogFile1:
     linelist = line.split()
     if len(linelist) > 0:
-        if (linelist[0] == "Number" and linelist[2] == "projections"):
+        if linelist[0] == "Number" and linelist[2] == "projections":
             Projections1 = int(linelist[4])
-        elif (linelist[0] == "Number" and linelist[2] == "darks"):
+        elif linelist[0] == "Number" and linelist[2] == "darks":
             Darks1 = int(linelist[4])
-        elif (linelist[0] == "Number" and linelist[2] == "flats"):
+        elif linelist[0] == "Number" and linelist[2] == "flats":
             Flats1 = int(linelist[4])
 LogFile1.close()
 print 'For sample', InputSample, 'we recorded', Darks1, 'darks,', Flats1, \
