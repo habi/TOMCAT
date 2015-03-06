@@ -131,7 +131,7 @@ if options.manual:
     ActualPixelSize = options.pixelsize / options.magnification
 else:
     try:
-        ## Initialize the channels
+        # Initialize the channels
         EPICS_Camera = EpicsChannel('X02DA-ES1-CAM1:CAM_SEL')
         EPICS_PixelSize = EpicsChannel('X02DA-ES1-CAM1:PIXL_SIZE')
         EPICS_NbrOfPixels = EpicsChannel('X02DA-ES1-CAM1:PIX_NBR_H')
@@ -139,7 +139,7 @@ else:
         EPICS_ActualPixelSize = EpicsChannel('X02DA-ES1-CAM1:ACT_PIXL_SIZE')
         EPICS_Sample_Stage_X = EpicsChannel('X02DA-ES1-SMP1:TRX.VAL')
         EPICS_ZeroPositionToggle = EpicsChannel('X02DA-ES1-SMP1:TRX-SET0.PROC')
-        ## Get them values
+        # Get them values
         Camera = int(EpicsChannel.getVal(EPICS_Camera))
         options.pixelsize = EpicsChannel.getVal(EPICS_PixelSize)
         options.windowwidth = int(EpicsChannel.getVal(EPICS_NbrOfPixels))

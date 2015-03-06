@@ -11,7 +11,7 @@ In PyCharm, open the settings and go down to the External Tools section.
 Add a new tool, and set the path to where you put run_pylint.py.
 Set both "Parameters" and "Working directory" to $Projectpath$.
 
-Before you close the dialog, click on the "Output Filters" button and add the 
+Before you close the dialog, click on the "Output Filters" button and add the
 "regular expression to match output": $FILE_PATH$\:$LINE$\:
 """
 
@@ -23,14 +23,10 @@ import re
 PYLINT = '/usr/bin/pylint'
 BASE_PATH = sys.argv[1]
 OUTPUT_FILE = None
-EXTRA_LIBS = [
-]
-DISABLED_SETTINGS = [
-]
-IGNORE_PATTERNS = [
-]
-ADDITIONAL_PARAMETERS = [
-]
+EXTRA_LIBS = []
+DISABLED_SETTINGS = []
+IGNORE_PATTERNS = []
+ADDITIONAL_PARAMETERS = []
 CODE_RATING = re.compile(r'Your code has been rated at ([-0-9.]*)/10 \(previous run: ([-0-9.]*)/10\)')
 FILE_NAME = re.compile(r'[-a-zA-Z0-9_/]*\.py')
 
@@ -107,4 +103,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
