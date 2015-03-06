@@ -197,17 +197,17 @@ except:
 
 # See if the Sinogram in question actually exists. If not, exit.
 if os.path.exists(os.path.abspath(options.SinDir) + '/' + SampleName +
-                  str(inogram) + '.sin.DMP') is False:
+                  str(Sinogram) + '.sin.DMP') is False:
     print 'Help! The requested sinogram (' + options.SinDir + '/' + \
           SampleName + str(Sinogram) + '.sin.DMP) does not exist.'
     print 'Did you select one of the', len(glob.glob(options.SinDir + '/' +
                                                      SampleName +
                                                      '*.sin.DMP')), \
         'sinograms below?'
-    for file in range(len(glob.glob(options.SinDir + '/' + SampleName +
+    for sino in range(len(glob.glob(options.SinDir + '/' + SampleName +
                                     '*.sin.DMP'))):
         print np.sort(glob.glob(options.SinDir + '/' + SampleName +
-                                '*.sin.DMP')[file])
+                                '*.sin.DMP')[sino])
     print 'Please enter a sinogram-number that actually exists for the ' \
           'Parameter "-s".'
     if options.debug is False:

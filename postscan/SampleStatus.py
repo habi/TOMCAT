@@ -8,12 +8,10 @@ Script to show the samples currently measured, basic information about them
 (center, etc), and how many files are in each of the corresponding directories.
 '''
 
-# Import necessary modules
 from glob import glob
 from optparse import OptionParser
 from os import getlogin
-import os
-import sys
+
 globals()['errorLog'] = []
 
 

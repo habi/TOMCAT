@@ -238,11 +238,10 @@ if os.path.exists(options.SinDir) is False:
     if options.debug is False:
         sys.exit(1)
 try:
-    """
-    os.path.abspath gets rid of any relative pathnames and outputs the full
-    path. The os.path.dirname gets rid of the Sin-directory and the additional
-    basename around it gives us the directory in which we'll find the sample.
-    """
+    # os.path.abspath gets rid of any relative pathnames and outputs the
+    # full path. The os.path.dirname gets rid of the Sin-directory and the
+    # additional basename around it gives us the directory in which we'll
+    # find the sample.
     SampleName = os.path.basename(
         os.path.dirname(os.path.abspath(options.SinDir)))
 except:
@@ -374,11 +373,9 @@ print '  - with', len(RotationCenter), 'Rotationcenter steps of size',\
 print '  - varying from', str(RotationCenter[0]) + ',',\
     str(RotationCenter[1]) + ', etc. up to', RotationCenter[-1]
 
-"""
-From prior runs there might be some reconstructed DMPs in the sinogram-
-folder. Delete these, as it might confuse Fiji/the user when loading all files
-at the end of the script
-"""
+# From prior runs there might be some reconstructed DMPs in the sinogram-
+# folder. Delete these, as it might confuse Fiji/the user when loading all
+# files at the end of the script
 if len(glob.glob(os.path.abspath(options.SinDir) + '/*rec*')) > 1:
     deletecommand = 'rm ' + options.SinDir + '/' + SampleName + '*.rec.DMP'
     if options.Verbose:

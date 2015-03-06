@@ -653,13 +653,12 @@ else:
     # Give a meaningful slice if the user selected the full set to reconstruct
     if not options.SliceNumber:
         options.SliceNumber = 1001
-    """
-    DUE TO THE FACT THAT WE'RE ONLY CALCULATING A ROI, THE SLICES ARE NUMBERED
-    "WRONGLY" I.E. THEY ALWAYS START AT 1 AND GO TO 2*(options.SlicesAround +1)
-    INSTEAD OF CALLING THE SELECTED SLICE (str(options.SliceNumber).zfill(4)),
-    WE THUS OPEN SLICE options.SlicesAround + 1 IN FIJI, WHICH - CONVENIENTLY -
-    IS THE MIDDLE ONE :)
-    """
+    # DUE TO THE FACT THAT WE'RE ONLY CALCULATING A ROI, THE SLICES ARE
+    # NUMBERED "WRONGLY" I.E. THEY ALWAYS START AT 1 AND GO TO
+    # 2*(options.SlicesAround +1) INSTEAD OF CALLING THE SELECTED SLICE (
+    # str(options.SliceNumber).zfill(4)), WE THUS OPEN SLICE
+    # options.SlicesAround + 1 IN FIJI, WHICH - CONVENIENTLY - IS THE MIDDLE
+    # ONE :)
     command = 'cd', options.SampleFolder, \
         '\nfor i in `ls rec_*e-* -d`;', \
         '\ndo echo looking at $i;', \
