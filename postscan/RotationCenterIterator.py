@@ -118,7 +118,7 @@ if options.SinDir is None:
 
 def query_yes_no(question, default="yes"):
     # from http://code.activestate.com/recipes/577058/
-    '''
+    """
     Ask a yes/no question via raw_input() and return their answer.
 
     "question" is a string that is presented to the user.
@@ -127,7 +127,7 @@ def query_yes_no(question, default="yes"):
         an answer is required of the user).
 
     The "answer" return value is one of "yes" or "no".
-    '''
+    """
     valid = {"yes": "yes", "y": "yes", "ye": "yes", "no": "no", "n": "no"}
     if default is None:
         prompt = " [y/n] "
@@ -150,8 +150,8 @@ def query_yes_no(question, default="yes"):
                              " or 'n').\n")
 
 
-def worker(i, RotationCenter, options, SampleName, Sinogram):
-    '''
+def worker(i, rotcenter, options, name, sin):
+    """
     Makes all the actual work ;).
     1/ Creates temporary directory,
     2/ Generates slice into tmp directory (gridrec reconstruction)
@@ -164,12 +164,12 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
     PBT180s20xD_3_0901.sin.DMP -Z 0.5
     -O /sls/X02DA/data/e13869/Data10/disk5/PBT180s20xD_3_/sin/1302.390/
     ---
-    '''
+    """
 
     # Reconstruct with gridrec
-    print '|' + (i + 1) * '=' + (len(RotationCenter) - (i + 1)) * '-' +\
-        '| ' + "%02d" % (i + 1) + '/' + "%02d" % len(RotationCenter) + ', ' +\
-        SampleName + str(Sinogram) + '.sin.DMP, ' + str(RotationCenter[i])
+    print '|' + (i + 1) * '=' + (len(rotcenter) - (i + 1)) * '-' +\
+        '| ' + "%02d" % (i + 1) + '/' + "%02d" % len(rotcenter) + ', ' +\
+        name + str(sin) + '.sin.DMP, ' + str(rotcenter[i])
     # Call either 64bit or 32bit gridrec
     # platform.architecture[0] gives out '32bit' or '64bit', with [:-3] we
     # remove the 'bit' and afterwards add the other paramteres to the command
@@ -177,13 +177,13 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
     if platform.node()[0:6] == "merlin":
         reccommand = '/afs/psi/project/TOMCAT_pipeline/Merlin/' +\
             'tomcat_pipeline/src/Reconstruction/lib/gridRec -c ' +\
-            str(RotationCenter[i]) + ' -D ' + options.SinDir + '/ ' +\
-            SampleName + str(Sinogram) + '.sin.DMP' + ' -Z ' +\
+            str(rotcenter[i]) + ' -D ' + options.SinDir + '/ ' +\
+            name + str(sin) + '.sin.DMP' + ' -Z ' +\
             str(options.ZeroPadding)
     else:
         reccommand = 'gridrec_' + platform.architecture()[0][:-3] + ' -c ' +\
-            str(RotationCenter[i]) + ' -D ' + options.SinDir + '/ ' +\
-            SampleName + str(Sinogram) + '.sin.DMP' + ' -Z ' +\
+            str(rotcenter[i]) + ' -D ' + options.SinDir + '/ ' +\
+            name + str(sin) + '.sin.DMP' + ' -Z ' +\
             str(options.ZeroPadding)
     if options.Filter:
         # Add filter to the end of the command (if the user specified one)
@@ -192,18 +192,18 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
         # Add filter to the end of the command (if the user specified one)
         reccommand += ' -g ' + str(options.Geometry)
 
-    #create temporary directory for reconstruction of rotation center
-    tmp_dir = options.SinDir + '/' + str("%.03f" % RotationCenter[i]) + '/'
+    # Create temporary directory for reconstruction of rotation center
+    tmp_dir = options.SinDir + '/' + str("%.03f" % rotcenter[i]) + '/'
     if not os.path.exists(tmp_dir):
         if options.Verbose:
             print 'The temporary directory is:', tmp_dir
         os.makedirs(tmp_dir)
 
-    #set output directory for gridrec
+    # Set output directory for gridrec
     reccommand += ' -O ' + os.path.abspath(tmp_dir) + '/'
 
     if options.Verbose:
-        print 'Reconstructing RotationCenter ' + str(RotationCenter[i]) +\
+        print 'Reconstructing RotationCenter ' + str(rotcenter[i]) +\
             ' with the command'
         print reccommand
         os.system(reccommand)
@@ -211,9 +211,9 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
         os.system(reccommand + '> /dev/null')
 
     # Rename the reconstructed file to 'filename.rotationcenter.rec.dmp'
-    renamecommand = 'mv ' + os.path.abspath(tmp_dir) + '/' + SampleName +\
-        str(Sinogram) + '.rec.DMP ' + os.path.abspath(options.SinDir) + '/' +\
-        SampleName + str(Sinogram) + '.' + str("%.03f" % RotationCenter[i]) +\
+    renamecommand = 'mv ' + os.path.abspath(tmp_dir) + '/' + name +\
+        str(sin) + '.rec.DMP ' + os.path.abspath(options.SinDir) + '/' +\
+        name + str(sin) + '.' + str("%.03f" % rotcenter[i]) +\
         '.rec.DMP'
     if options.Verbose:
         print 80 * '_'
@@ -229,7 +229,7 @@ def worker(i, RotationCenter, options, SampleName, Sinogram):
     os.removedirs(tmp_dir)
 
 # Assemble Directory- and Samplenames and prepare all other parameters
-## test if the directory exists, if not, tell the user
+# test if the directory exists, if not, tell the user
 if os.path.exists(options.SinDir) is False:
     print
     print 'Directory "' + options.SinDir + '" not found, please try again',\
@@ -279,7 +279,7 @@ if options.RotationCenter is None:
         Rotationcenter.
         """
         if len(currentline) > 0:
-            if (currentline[0] == 'Rotation' and currentline[1] == 'center'):
+            if currentline[0] == 'Rotation' and currentline[1] == 'center':
                 options.RotationCenter = float(line.split(':')[1].strip())
     if options.Verbose:
         print 'Rotation center set to', options.RotationCenter
@@ -356,10 +356,10 @@ if os.path.exists(os.path.abspath(options.SinDir) + '/' + SampleName +
     print 'Did you select one of the',\
         len(glob.glob(options.SinDir + '/' + SampleName + '*.sin.DMP')),\
         'sinograms below?'
-    for file in range(len(glob.glob(options.SinDir + '/' + SampleName +
-                                    '*.sin.DMP'))):
+    for sinogram in range(len(glob.glob(options.SinDir + '/' + SampleName +
+                                        '*.sin.DMP'))):
         print np.sort(glob.glob(options.SinDir + '/' + SampleName +
-                                '*.sin.DMP')[file])
+                                '*.sin.DMP')[sinogram])
     print 'Please enter a sinogram-number that actually exists for the',\
         'Parameter "-s".'
     if options.debug is False:

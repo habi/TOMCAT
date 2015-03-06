@@ -12,7 +12,6 @@ from optparse import OptionParser
 import getpass
 import os
 import subprocess
-import commands
 
 # Setup
 MountPoint = '/archiv/project/sls'
@@ -57,7 +56,7 @@ print 'For this I will start to look for files on',\
 # Generate command to list the files on the MountPoint on xbl-archiv
 # From http://is.gd/ZVlIg9
 sshCommand = 'ssh', '-q', options.eAccount + '@xbl-archiv', 'find',\
-    os.path.join(MountPoint, options.eAccount), '-name',  '\'*' +\
+    os.path.join(MountPoint, options.eAccount), '-name', '\'*' +\
     options.Sample + '*\''
 
 print
@@ -84,7 +83,7 @@ print 'In', os.path.commonprefix(SampleList) + '* I found:'
 Counter = 0
 for Sample in SampleList:
     # http://stackoverflow.com/a/11784589/323100
-    print '    [' + str(Counter) + ']\033[1m',  os.path.basename(Sample),\
+    print '    [' + str(Counter) + ']\033[1m', os.path.basename(Sample),\
         '\033[0min', os.path.dirname(Sample)
     Counter += 1
 

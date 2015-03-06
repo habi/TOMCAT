@@ -81,7 +81,7 @@ Beta = Data[:, 2].tolist()
 # Get the closest to the chosen energy and show values around that to the user.
 # http://stackoverflow.com/a/9706105/323100
 ClosestEnergy = Energy[min(range(len(Energy)),
-                       key=lambda i:abs(Energy[i] - options.Energy*1000))]
+                       key=lambda i:abs(Energy[i] - options.Energy * 1000))]
 print
 print 'For',
 if options.Energy == 20.:
@@ -92,10 +92,10 @@ print 'value of', options.Energy, 'keV, the closest value found in',\
     os.path.basename(options.DataFile), 'is', round(ClosestEnergy) / 1000,\
     'keV'
 print 'The values around this energy are:'
-print '    *', round(Energy[Energy.index(ClosestEnergy)-1]) / 1000,\
+print '    *', round(Energy[Energy.index(ClosestEnergy) - 1]) / 1000,\
     'keV, with',
-CurrentDelta = Delta[Energy.index(ClosestEnergy)-1]
-CurrentBeta = Beta[Energy.index(ClosestEnergy)-1]
+CurrentDelta = Delta[Energy.index(ClosestEnergy) - 1]
+CurrentBeta = Beta[Energy.index(ClosestEnergy) - 1]
 print 'a Delta of', "%.4g" % CurrentDelta, 'and a Beta of',\
     "%.4g" % CurrentBeta
 
@@ -135,10 +135,10 @@ else:
     plt.legend(loc='best')
     plt.xlabel('Photon Energy [eV] | TOMCAT: 8-45 keV')
 
-print '    * and', round(Energy[Energy.index(ClosestEnergy)-1]) / 1000,\
+print '    * and', round(Energy[Energy.index(ClosestEnergy) - 1]) / 1000,\
     'keV, with',
-CurrentDelta = Delta[Energy.index(ClosestEnergy)+1]
-CurrentBeta = Beta[Energy.index(ClosestEnergy)+1]
+CurrentDelta = Delta[Energy.index(ClosestEnergy) + 1]
+CurrentBeta = Beta[Energy.index(ClosestEnergy) + 1]
 print 'a Delta of', "%.4g" % CurrentDelta, 'and a Beta of',\
     "%.4g" % CurrentBeta
 
