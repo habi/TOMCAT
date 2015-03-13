@@ -261,7 +261,7 @@ if options.RotationCenter is None:
         print 'Trying to get RotationCenter from', LogFileLocation
     try:
         LogFile = open(LogFileLocation, 'r')
-    except:
+    except IOError:
         print 'I cannot seem to find a log file!'
         print 'You told me to look here:', os.path.abspath(options.SinDir)
         print 'Maybe you only told me about the sample folder and forgot to',\
@@ -398,7 +398,7 @@ else:
     if options.Multicore:
         try:
             import multiprocessing
-        except:
+        except ImporError:
             print 'I can not import the python module multiprocessing.'
             print 'Additional modules have to be loaded! Run'
             print '---'
