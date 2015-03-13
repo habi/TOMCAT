@@ -74,7 +74,7 @@ try:
     Image = sum(Image, axis=2)
     # Flip the image upsidedown, since Matplotlib set the origin differently
     Image = numpy.flipud(Image)
-except:
+except IOError:
     print 'I was not able to read the file, did you specify the correct' \
           'path with "-f"?'
     exit(1)

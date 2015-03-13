@@ -79,7 +79,7 @@ if not options.manual:
     # those when not at the beamline...
     try:
         from CaChannel import *
-    except:
+    except ImportError:
         print 'I could not import the CaChannel module which we need for',\
             'the EPICS connection.'
         print 'Maybe try the -m option to specify the parameters manually...'

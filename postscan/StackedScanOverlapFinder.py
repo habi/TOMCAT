@@ -69,7 +69,7 @@ def AskUser(Blurb, Choices):
                                             'want [0-' +
                                             str(len(Choices) - 1) +
                                             ']:'])))
-        except:
+        except NameError:
             print 'You actually have to select *something*'
         if Selection not in range(len(Choices)):
             print 'Try again with a valid choice'
@@ -92,7 +92,6 @@ def myLogger(Folder, LogFileName):
     Based on http://stackoverflow.com/a/2754216/323100
     """
     import logging
-    import os
     logger = logging.getLogger(LogFileName)
     # either set INFO or DEBUG
     # logger.setLevel(logging.DEBUG)
