@@ -398,7 +398,7 @@ else:
     if options.Multicore:
         try:
             import multiprocessing
-        except ImporError:
+        except ImportError:
             print 'I can not import the python module multiprocessing.'
             print 'Additional modules have to be loaded! Run'
             print '---'
