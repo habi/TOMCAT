@@ -137,18 +137,18 @@ plt.vlines(options.CNRCoordinates[0][0] + options.CNRPixelWidth,
            options.CNRCoordinates[0][1] - options.CNRPixelWidth,
            options.CNRCoordinates[0][1] + options.CNRPixelWidth, 'r')
 # Point 2
-plt.hlines(options.CNRCoordinates[1][1]-options.CNRPixelWidth,
-           options.CNRCoordinates[1][0]-options.CNRPixelWidth,
-           options.CNRCoordinates[1][0]+options.CNRPixelWidth, 'r')
-plt.hlines(options.CNRCoordinates[1][1]+options.CNRPixelWidth,
-           options.CNRCoordinates[1][0]-options.CNRPixelWidth,
-           options.CNRCoordinates[1][0]+options.CNRPixelWidth, 'r')
-plt.vlines(options.CNRCoordinates[1][0]-options.CNRPixelWidth,
-           options.CNRCoordinates[1][1]-options.CNRPixelWidth,
-           options.CNRCoordinates[1][1]+options.CNRPixelWidth, 'r')
-plt.vlines(options.CNRCoordinates[1][0]+options.CNRPixelWidth,
-           options.CNRCoordinates[1][1]-options.CNRPixelWidth,
-           options.CNRCoordinates[1][1]+options.CNRPixelWidth, 'r')
+plt.hlines(options.CNRCoordinates[1][1] - options.CNRPixelWidth,
+           options.CNRCoordinates[1][0] - options.CNRPixelWidth,
+           options.CNRCoordinates[1][0] + options.CNRPixelWidth, 'r')
+plt.hlines(options.CNRCoordinates[1][1] + options.CNRPixelWidth,
+           options.CNRCoordinates[1][0] - options.CNRPixelWidth,
+           options.CNRCoordinates[1][0] + options.CNRPixelWidth, 'r')
+plt.vlines(options.CNRCoordinates[1][0] - options.CNRPixelWidth,
+           options.CNRCoordinates[1][1] - options.CNRPixelWidth,
+           options.CNRCoordinates[1][1] + options.CNRPixelWidth, 'r')
+plt.vlines(options.CNRCoordinates[1][0] + options.CNRPixelWidth,
+           options.CNRCoordinates[1][1] - options.CNRPixelWidth,
+           options.CNRCoordinates[1][1] + options.CNRPixelWidth, 'r')
 plt.draw()
 
 S1 = numpy.mean(Image[options.CNRCoordinates[0][1] - options.CNRPixelWidth:options.CNRCoordinates[0][1] + options.CNRPixelWidth,
@@ -169,16 +169,16 @@ Mean = numpy.mean(Image[y1:y2, x1:x2])
 STD = numpy.std(Image[y1:y2, x1:x2])
 print 'The SNR of the ROI is:', SNR
 print 'Mean =', round(Mean, 3), '| STD =', round(STD, 3),\
-    '| SNR ("Mean/STD") =', round(Mean/STD, 3)
+    '| SNR ("Mean/STD") =', round(Mean / STD, 3)
 
 print
 print 'CNR between the two selected points:'
 print 'with a ROI area around them of', (2 * options.CNRPixelWidth) ** 2,\
     'pixels (±width of', options.CNRPixelWidth, 'pixels).'
 
-CNR = numpy.abs(S1-S2)/(Sigma1+Sigma2)
+CNR = numpy.abs(S1 - S2) / (Sigma1 + Sigma2)
 print 'The CNR between the two points is:', CNR
-title = 'CNR: '+str(round(CNR, 4))
+title = 'CNR: ' + str(round(CNR, 4))
 plt.title(title)
 plt.draw()
 

@@ -44,11 +44,11 @@ folders = {'tif': 'A:Projs', 'fltp': 'B:SinoffPag',
 folders[opts.stdrec] = 'C:Std.Rec'
 folders[opts.pagrec] = 'C:Pag.Rec'
 # make a flat list of all the keys
-allfiles = reduce(lambda a, b: a+b, map(cRecFunc, folders.keys()))
+allfiles = reduce(lambda a, b: a + b, map(cRecFunc, folders.keys()))
 allsamples = {}
 for cfile in allfiles:
     (cfold, csx) = remRecFunc(cfile)
-    allsamples[cfold] = allsamples.get(cfold, [])+[csx]
+    allsamples[cfold] = allsamples.get(cfold, []) + [csx]
 
 
 def getLogParameter(logLines, parmName, outName=None):
@@ -70,7 +70,7 @@ def getLogParameter(logLines, parmName, outName=None):
 
 def getRot(foldName):  # get the rotation center from the log file
     try:
-        curLog = glob(foldName+'/tif/*.log')[0]
+        curLog = glob(foldName + '/tif/*.log')[0]
         f = open(curLog)
         allLogLines = f.readlines()
         # Sinofly estimated rotation center
@@ -81,19 +81,19 @@ def getRot(foldName):  # get the rotation center from the log file
                                                   *x[2]), paramList)
         return ' '.join(filter(lambda x: len(x) > 0, paramVals))
     except:
-        errorMsg(foldName+' log not found!')
+        errorMsg(foldName + ' log not found!')
         return ''
 
 
 def fixFolderName(cFolder, cSuffix):
     newSuffix = folders.get(cSuffix, cSuffix)
-    return newSuffix+'('+str(len(glob(cFolder+'/'+cSuffix+'/*')))+')'
+    return newSuffix + '(' + str(len(glob(cFolder + '/' + cSuffix + '/*'))) + ')'
 
 for cfold in sorted(allsamples.keys()):
     cSubDirs = allsamples[cfold]
     cNamed = sorted(map(lambda fn: fixFolderName(cfold, fn), cSubDirs))
-    print '/'.join(cfold.split('/')[-3:])+':\t'+getRot(cfold)+str(cNamed)
+    print '/'.join(cfold.split('/')[-3:]) + ':\t' + getRot(cfold) + str(cNamed)
 
 eLog = globals()['errorLog']
 if len(eLog) > 0:
-    print '\n'.join(['Error(s) Found']+eLog)
+    print '\n'.join(['Error(s) Found'] + eLog)
