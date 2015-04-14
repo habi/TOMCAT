@@ -47,8 +47,9 @@ for counter, FileName in enumerate(Reconstructions):
     with tifffile(FileName) as TIFFFile:
         Image = TIFFFile.asarray()
     plt.figure(figsize=[12, 12])
-    plt.imshow(Image, cmap='gray')
-    plt.title(os.path.basename(FileName) + ' from ' +
+    plt.imshow(Image, cmap='gray', interpolation='none')
+    plt.title(str(counter + 1) + '/' + str(len(Reconstructions)) + ': ' +\
+              os.path.basename(FileName) + ' from ' +
               os.path.dirname(FileName))
     plt.tight_layout()
     plt.show()
