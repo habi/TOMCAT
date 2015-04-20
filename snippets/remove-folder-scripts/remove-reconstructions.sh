@@ -20,6 +20,7 @@ select yn in "Yes" "No"; do
 				echo "removing $CURRENTFOLDER/*/rec*";
 				for i in `ls * -d`;
 					do du -sh $i/rec*;
+					rm -r $i/rec*;
 				done;
 				break;;
 		        No ) echo "OK, bye!";exit;;
