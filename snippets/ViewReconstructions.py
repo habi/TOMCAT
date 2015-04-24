@@ -39,9 +39,8 @@ except ImportError:
 # Detect all subfolders
 print 'Looking for reconstructions in all subfolders of %s' % \
       os.path.abspath(os.getcwd())
-CurrentDisk = os.path.basename(os.getcwd())
-ReconstructionFolders = glob.glob(os.path.join('/sls/X02DA/Data10/e15423',
-                                               CurrentDisk, '*', 'rec_*'))
+ReconstructionFolders = glob.glob(os.path.join(os.getcwd(), '*', 'rec_*'))
+
 if not ReconstructionFolders:
     print 'No reconstruction subfolders found.'
     print 'Copy the script to ~/Data10/diskX and start it from there'
@@ -49,7 +48,7 @@ if not ReconstructionFolders:
 
 print 'Showing three slices for each of the %s found reconstruction ' \
       'folders in the subfolder of %s\n' \
-      % (len(ReconstructionFolders), CurrentDisk)
+      % (len(ReconstructionFolders), os.path.basename(os.getcwd()))
 
 for counter, CurrentFolder in enumerate(ReconstructionFolders):
     if len(glob.glob(os.path.join(CurrentFolder, '*.DMP'))):
