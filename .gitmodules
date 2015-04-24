@@ -1,3 +1,6 @@
 [submodule "postscan/grecoman"]
 	path = postscan/grecoman
 	url = https://github.com/gnudo/grecoman.git
+[submodule "postscan/dmp-files"]
+	path = postscan/dmp-files
+	url = git@bitbucket.org:psitomcat/dmp-files.git
