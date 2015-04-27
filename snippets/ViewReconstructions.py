@@ -5,7 +5,8 @@
 ViewReconstructions.py | David Haberthür <david.haberthuer@psi.ch>
 
 This script is best symlinked to each of the diskX subfolders and then run
-from there.
+from there. Or you can run it from inside the diskX subfolder with the 
+absolute path to the snippets directory...
 
     > cd ~/Data10/disk1
     > ln -s ~/beamline-scripts/snippets/ViewReconstructions.py .
@@ -32,8 +33,8 @@ except ImportError:
     print 'To use this script, we need to load two modules, the Enthought ' \
           'Python Distribution and the tiff file library.'
     print 'To do so, please enter the command below into the terminal and ' \
-          'start the script again.'
-    print 'module load xbl/epd; module load xbl/tifffile/2012.01.01'
+          'start the script again.\n'
+    print 'module load xbl/epd; module load xbl/tifffile/2012.01.01\n'
     exit()
 
 # Detect all subfolders
@@ -43,7 +44,7 @@ ReconstructionFolders = glob.glob(os.path.join(os.getcwd(), '*', 'rec_*'))
 
 if not ReconstructionFolders:
     print 'No reconstruction subfolders found.'
-    print 'Copy the script to ~/Data10/diskX and start it from there'
+    print 'Run the script from ~/Data10/diskX!'
     exit()
 
 print 'Showing three slices for each of the %s found reconstruction ' \
@@ -63,8 +64,9 @@ for counter, CurrentFolder in enumerate(ReconstructionFolders):
         Suffix = []
 
     if Suffix:
-        print 'Reading three %s files from the %s ones found in %s\n' % (
-            Suffix, len(glob.glob(os.path.join(CurrentFolder, '*' + Suffix))),
+        print '%s/%s: Reading three %s files from the %s ones found in %s' % (
+            counter + 1, len(ReconstructionFolders), Suffix,
+            len(glob.glob(os.path.join(CurrentFolder, '*' + Suffix))), 
             CurrentFolder)
         FileTop = sorted(glob.glob(os.path.join(CurrentFolder,
                                                 '*.' + Suffix)))[
