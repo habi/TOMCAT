@@ -5,7 +5,7 @@
 ViewReconstructions.py | David Haberthür <david.haberthuer@psi.ch>
 
 This script is best symlinked to each of the diskX subfolders and then run
-from there. Or you can run it from inside the diskX subfolder with the 
+from there. Or you can run it from inside the diskX subfolder with the
 absolute path to the snippets directory...
 
     > cd ~/Data10/disk1
@@ -40,7 +40,8 @@ except ImportError:
 # Detect all subfolders
 print 'Looking for reconstructions in all subfolders of %s' % \
       os.path.abspath(os.getcwd())
-ReconstructionFolders = glob.glob(os.path.join(os.getcwd(), '*', 'rec_*'))
+ReconstructionFolders = sorted(glob.glob(os.path.join(os.getcwd(), '*',
+                                         'rec_*')))
 
 if not ReconstructionFolders:
     print 'No reconstruction subfolders found.'
@@ -66,11 +67,11 @@ for counter, CurrentFolder in enumerate(ReconstructionFolders):
     if Suffix:
         print '%s/%s: Reading three %s files from the %s ones found in %s' % (
             counter + 1, len(ReconstructionFolders), Suffix,
-            len(glob.glob(os.path.join(CurrentFolder, '*' + Suffix))), 
+            len(glob.glob(os.path.join(CurrentFolder, '*' + Suffix))),
             CurrentFolder)
         FileTop = sorted(glob.glob(os.path.join(CurrentFolder,
                                                 '*.' + Suffix)))[
-            len(glob.glob(os.path.join(CurrentFolder, '*.' + Suffix)))/4]
+            len(glob.glob(os.path.join(CurrentFolder, '*.' + Suffix))) / 4]
         FileMid = sorted(glob.glob(os.path.join(CurrentFolder,
                                                 '*.' + Suffix)))[
             2 * len(glob.glob(os.path.join(CurrentFolder, '*.' + Suffix))) / 4]
@@ -93,17 +94,17 @@ for counter, CurrentFolder in enumerate(ReconstructionFolders):
         plt.imshow(ImageTop, cmap='gray', interpolation='none')
         plt.title('Slice %s' %
                   str(len(glob.glob(os.path.join(CurrentFolder,
-                                                 '*.' + Suffix)))/4+1))
+                                                 '*.' + Suffix))) / 4 + 1))
         plt.subplot(132)
         plt.imshow(ImageMid, cmap='gray', interpolation='none')
         plt.title('Slice %s' %
-                  str(2*len(glob.glob(os.path.join(CurrentFolder,
-                                                   '*.' + Suffix)))/4+1))
+                  str(2 * len(glob.glob(os.path.join(CurrentFolder,
+                                                     '*.' + Suffix))) / 4 + 1))
         plt.subplot(133)
         plt.imshow(ImageBot, cmap='gray', interpolation='none')
         plt.title('Slice %s' %
-                  str(3*len(glob.glob(os.path.join(CurrentFolder,
-                                                   '*.' + Suffix)))/4+1))
+                  str(3 * len(glob.glob(os.path.join(CurrentFolder,
+                                                     '*.' + Suffix))) / 4 + 1))
         plt.suptitle('%s/%s: three slices of %s from %s' % (
             counter + 1, len(ReconstructionFolders),
             len(glob.glob(os.path.join(CurrentFolder, '*.' + Suffix))),
