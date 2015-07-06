@@ -45,13 +45,17 @@ Parser = OptionParser()
 Parser.add_option('-p', dest='PDF', default=False, metavar=1,
                   action='store_true',
                   help='Do not output to screen, but to Overview.pdf')
+Parser.add_option('-f', dest='filter', type='str', default='*',
+                  metavar='somename',
+                  help='Only look at samples named like this. '
+                       'Default: %default')
 (options, Arguments) = Parser.parse_args()
 
 # Detect all subfolders
 print 'Looking for reconstructions in all subfolders of %s' % \
       os.path.abspath(os.getcwd())
-ReconstructionFolders = sorted(glob.glob(os.path.join(os.getcwd(), '*',
-                                         'rec_*')))
+ReconstructionFolders = sorted(glob.glob(os.path.join(os.getcwd(),
+                                         '*' + options.filter + '*', 'rec_*')))
 
 if not ReconstructionFolders:
     print 'No reconstruction subfolders found.'
@@ -59,9 +63,8 @@ if not ReconstructionFolders:
     exit()
 
 if options.PDF:
-    # Initialize multipage PDF
-    # http://matplotlib.org/faq/howto_faq.html#save-multiple-plots-to-one-pdf-file
-    PDF = PdfPages(os.path.join(os.path.abspath(os.getcwd()),'Overview.pdf'))
+    # Initialize multipage PDF: http://is.gd/yCB4CC
+    PDF = PdfPages(os.path.join(os.path.abspath(os.getcwd()), 'Overview.pdf'))
     print 'Saving image of',
 else:
     print 'Showing',
@@ -70,7 +73,7 @@ print 'three slices for each of the %s found reconstruction ' \
       % (len(ReconstructionFolders), os.path.basename(os.getcwd()))
 if options.PDF:
     print 'All your images are going to %s\n' % os.path.join(
-	os.path.abspath(os.getcwd()), 'Overview.pdf')
+        os.path.abspath(os.getcwd()), 'Overview.pdf')
 
 for counter, CurrentFolder in enumerate(ReconstructionFolders):
     if len(glob.glob(os.path.join(CurrentFolder, '*.DMP'))):
@@ -132,14 +135,14 @@ for counter, CurrentFolder in enumerate(ReconstructionFolders):
         plt.tight_layout()
         if options.PDF:
             print '\tAdding page to %s' % os.path.join(
-                os.path.abspath(os.getcwd()),'Overview.pdf')
+                os.path.abspath(os.getcwd()), 'Overview.pdf')
             plt.savefig(PDF, format='pdf')
-	plt.show()
+        plt.show()
 
 if options.PDF:
     print 'Saving the PDF will take a while...'
     print 'Especially if you requested lots of images.'
     PDF.close()
     print 'All your images are now in %s' % os.path.join(
-        os.path.abspath(os.getcwd()),'Overview.pdf')
+        os.path.abspath(os.getcwd()), 'Overview.pdf')
 print 'Done'
