@@ -44,7 +44,7 @@ except ImportError:
 Parser = OptionParser()
 Parser.add_option('-p', dest='PDF', default=False, metavar=1,
                   action='store_true',
-                  help='Do not output to screen, but to Overview.pdf')
+                  help='Save result to Overview.pdf')
 Parser.add_option('-f', dest='filter', type='str', default='*',
                   metavar='somename',
                   help='Only look at samples named like this. '
@@ -64,7 +64,11 @@ if not ReconstructionFolders:
 
 if options.PDF:
     # Initialize multipage PDF: http://is.gd/yCB4CC
-    PDF = PdfPages(os.path.join(os.path.abspath(os.getcwd()), 'Overview.pdf'))
+    if not options.filter == '*':
+        PDFName = 'Overview_' + options.filter
+    else:
+        PDFName = 'Overview'
+    PDF = PdfPages(os.path.join(os.path.abspath(os.getcwd()), PDFName + '.pdf'))
     print 'Saving image of',
 else:
     print 'Showing',
@@ -72,8 +76,8 @@ print 'three slices for each of the %s found reconstruction ' \
       'folders in the subfolder of %s\n' \
       % (len(ReconstructionFolders), os.path.basename(os.getcwd()))
 if options.PDF:
-    print 'All your images are going to %s\n' % os.path.join(
-        os.path.abspath(os.getcwd()), 'Overview.pdf')
+    print 'All your images are going to a PDF called %s\n' % os.path.join(
+        os.path.abspath(os.getcwd()), PDFName)
 
 for counter, CurrentFolder in enumerate(ReconstructionFolders):
     if len(glob.glob(os.path.join(CurrentFolder, '*.DMP'))):
@@ -135,7 +139,7 @@ for counter, CurrentFolder in enumerate(ReconstructionFolders):
         plt.tight_layout()
         if options.PDF:
             print '\tAdding page to %s' % os.path.join(
-                os.path.abspath(os.getcwd()), 'Overview.pdf')
+                os.path.abspath(os.getcwd()), PDFName)
             plt.savefig(PDF, format='pdf')
         plt.show()
 
@@ -144,5 +148,5 @@ if options.PDF:
     print 'Especially if you requested lots of images.'
     PDF.close()
     print 'All your images are now in %s' % os.path.join(
-        os.path.abspath(os.getcwd()), 'Overview.pdf')
+        os.path.abspath(os.getcwd()), PDFName)
 print 'Done'
