@@ -47,7 +47,7 @@ if options.eAccount is None:
 # Go!
 print 75 * '_'
 
-print 'We are looking for sample "' + options.Sample + '*" on xbl-archiv.'
+print 'We are looking for samples containing "*' + options.Sample + '*".'
 print
 print 'For this I will start to look for files on',\
     os.path.join(MountPoint, options.eAccount), '(and ask you for the',\
@@ -76,7 +76,7 @@ while True:
         SampleList.append(line.rstrip())
     else:
         break
-
+SampleList = sorted(SampleList)
 print 75 * '_'
 
 print 'In', os.path.commonprefix(SampleList) + '* I found:'
