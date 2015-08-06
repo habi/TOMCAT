@@ -98,6 +98,7 @@ def myLogger(Folder, LogFileName):
     logger.setLevel(logging.INFO)
     handler = logging.FileHandler(os.path.join(Folder, LogFileName), 'w')
     logger.addHandler(handler)
+    print 'Logging to', os.path.join(Folder, LogFileName)
     return logger
 
 
@@ -106,8 +107,8 @@ def normalizeimage(img, depth=1, verbose=False):
     if verbose:
         print 'Normalizing image from [' + str(numpy.min(img)) + ':' +\
               str(numpy.max(img)) + '] to',
-        normalizedimage = ((img - numpy.min(img)) * (depth / (numpy.max(img) -
-                                                              numpy.min(img))))
+    normalizedimage = ((img - numpy.min(img)) * (depth / (numpy.max(img) -
+                                                          numpy.min(img))))
     if verbose:
         print '[' + str(numpy.min(normalizedimage)) + ':' +\
               str(numpy.max(normalizedimage)) + ']'
@@ -153,20 +154,16 @@ if options.Directory is None:
 
 StartingFolder = os.path.dirname(os.path.abspath(options.Directory))
 SampleBaseName = os.path.basename(os.path.abspath(options.Directory)).replace(
-    '_B1_', '')
-
+    '_B1', '')
 # Find number of stacks that were scanned
 print 'Looking for all stacked scans of', bold(SampleBaseName), 'in', \
     bold(StartingFolder)
-NumberOfStacks = 1
-while os.path.exists(os.path.join(StartingFolder,
-                                  SampleBaseName + '_B' +
-                                  str(NumberOfStacks + 1) + '_/')):
-    NumberOfStacks += 1
-    if options.Verbose:
-        print 'I also found',\
-            os.path.basename(os.path.join(StartingFolder, SampleBaseName +
-                                          '_B' + str(NumberOfStacks)))
+StackList = glob.glob(os.path.join(StartingFolder, SampleBaseName + '*'))
+if options.Verbose:
+    print 'I found'
+    for i in StackList:
+        print '\t', i
+NumberOfStacks = len(StackList)
 print 'Found a total of', NumberOfStacks, 'stacked scans to go through.'
 print
 
@@ -203,13 +200,9 @@ else:
         options.Reconstructions += '.tif'
 
 # Count number of files in rec folder
-# TODO: parse logfile instead of counting files
-for CurrentStack in range(1, NumberOfStacks):
-    Stack = os.path.join(StartingFolder,
-                         SampleBaseName + '_B' + str(CurrentStack) + '_',
-                         RecDirectory)
-NumberOfReconstructions = len(glob.glob(os.path.join(Stack, '*.' +
-                                                     options.Reconstructions)))
+# TODO: parse logfile instead of just counting files
+NumberOfReconstructions = len(glob.glob(os.path.join(StackList[0],
+                              RecDirectory, '*.' + options.Reconstructions)))
 
 print 'We found', NumberOfReconstructions,\
     'reconstructions in the rec folder of the first stack.'
@@ -218,13 +211,10 @@ print 'We will check the top', \
     'images (' + str(options.Percent) + \
     '%) of the scan N+1 with the bottom image of stack N.'
 
-for StackNumber in range(1, NumberOfStacks):
-    TopStack = os.path.join(StartingFolder,
-                            SampleBaseName + '_B' + str(StackNumber) + '_',
-                            RecDirectory)
-    BottomStack = os.path.join(StartingFolder,
-                               SampleBaseName + '_B' + str(StackNumber + 1) +
-                               '_', RecDirectory)
+# Go through the stack list
+for StackNumber, Stack in enumerate(StackList[:-1]):
+    TopStack = os.path.join(StackList[StackNumber], RecDirectory)
+    BottomStack = os.path.join(StackList[StackNumber + 1], RecDirectory)
     print 80 * '-'
     print 'Comparing bottom of stack', \
         bold(os.path.basename(os.path.dirname(TopStack))), \
@@ -232,22 +222,22 @@ for StackNumber in range(1, NumberOfStacks):
         bold(os.path.basename(os.path.dirname(BottomStack)))
     try:
         logfile = myLogger(BottomStack,
-                           '_stackedscan.merge.B' + str(StackNumber) + '.B' +
-                           str(StackNumber + 1) + '.log')
+                           '_stackedscan.merge.B' + str(StackNumber + 1) +
+                           '.B' + str(StackNumber + 2) + '.log')
     except:
         print 'Cannot write to',\
             os.path.join(BottomStack,
-                         '_stackedscan.merge.B' + str(StackNumber) + '.B' +
-                         str(StackNumber + 1) + '.log')
+                         '_stackedscan.merge.B' + str(StackNumber + 1) + '.B' +
+                         str(StackNumber + 2) + '.log')
         print 'Does its directory exist?'
         sys.exit(1)
     logfile.info('Log file for stacked scan merging, performed on %s',
                  time.strftime('%d.%m.%Y at %H:%M:%S'))
     logfile.info(80 * '-')
+
     TopStackImageFilename = os.path.join(TopStack,
-                                         SampleBaseName + '_B' + str(
-                                             StackNumber) + '_' + str(
-                                             NumberOfReconstructions) +
+                                         os.path.basename(os.path.dirname(TopStack)) +
+                                         str(NumberOfReconstructions) +
                                          '.rec.' + options.Reconstructions)
     if 'DMP' in options.Reconstructions:
         TopStackImage = readDMP(TopStackImageFilename)
@@ -268,9 +258,8 @@ for StackNumber in range(1, NumberOfStacks):
     # Go through each image to compare
     for image in range(1, int(NumberOfImagesToCheck)):
         CompareImageFilename = os.path.join(BottomStack,
-                                            SampleBaseName + '_B' +
-                                            str(StackNumber + 1) + '_' +
-                                            str(image).zfill(3) + '.rec.' +
+                                            os.path.basename(os.path.dirname(BottomStack)) +
+                                            str(image).zfill(4) + '.rec.' +
                                             options.Reconstructions)
         if 'DMP' in options.Reconstructions:
             CompareImage = readDMP(CompareImageFilename)
@@ -330,20 +319,19 @@ for StackNumber in range(1, NumberOfStacks):
             image, NumberOfImagesToCheck,
             numpy.nanmin(MeanSquareErrorVector), CurrentBestImageName))
         sys.stdout.flush()
-    plt.savefig(os.path.join(BottomStack,
-                             '_stackedscan.difference.B' + str(StackNumber) +
-                             '.B' + str(StackNumber + 1) + '.png'),
-                transparent='True')
+    OutputFigureName = os.path.join(BottomStack,
+                                    '_stackedscan.difference.B' + str(StackNumber + 1) +
+                                    '.B' + str(StackNumber + 2) + '.png')
+    plt.savefig(OutputFigureName, transparent='True')
     plt.close()
     # Tell and log which file is best
     # Convert array to list so we can use ".index()" to find the image number
     BestMatchingImageNmbr = numpy.ndarray.tolist(
         MeanSquareErrorVector).index(numpy.nanmin(MeanSquareErrorVector))
-    BestMatchingImageFilename = os.path.join(BottomStack, SampleBaseName +
-                                             '_B' + str(StackNumber + 1) +
-                                             '_' +
+    BestMatchingImageFilename = os.path.join(BottomStack,
+                         os.path.basename(os.path.dirname(BottomStack)) +
                                              str(BestMatchingImageNmbr).zfill(
-                                                 3) + '.rec.' +
+                                                 4) + '.rec.' +
                                              options.Reconstructions)
     print 'Best match between images', \
         bold(os.path.basename(TopStackImageFilename)), 'and', \
@@ -356,12 +344,7 @@ for StackNumber in range(1, NumberOfStacks):
                  os.path.basename(BestMatchingImageFilename) +
                  ' with a mean square error of %e' % numpy.nanmin(
                      MeanSquareErrorVector))
-    print 'Log file written to',\
-        os.path.join(BottomStack, '_stackedscan.merge.B' + str(StackNumber) +
-                     '.B' + str(StackNumber + 1) + '.log')
-    print 'Image saved to to',\
-        os.path.join(BottomStack, '_stackedscan.difference.B' +
-                     str(StackNumber) + '.B' + str(StackNumber + 1) + '.png')
+    print 'Image saved to to', OutputFigureName
 
 print 80 * '-'
 print 'Done with everything'
