@@ -30,6 +30,44 @@ if 'cons' in platform.node():
 import matplotlib
 import matplotlib.pyplot as plt
 
+# Use Pythons Optionparser to define and read the options, and also
+# give some help to the user
+parser = OptionParser()
+usage = "usage: %prog [options] arg"
+parser.add_option('-D', '--Directory', dest='Directory',
+                  help='Location of the *first* subscan of the stack (scan_'
+                  'B1)',
+                  metavar='path')
+parser.add_option('-r', '--Reconstructions', dest='Reconstructions',
+                  help='Choose "DMP", "16bit" or "8bit", otherwise we will '
+                  'ask',
+                  metavar='DMP')
+parser.add_option('-p', '--Percent', dest='Percent',
+                  help='How many percent of stack N+1 should we compare with '
+                  'the last image of stack N. (Default: %default %)',
+                  metavar='14', type=int, default=10)
+parser.add_option('-v', '--verbose', dest='Verbose',
+                  default=False,
+                  action='store_true',
+                  help='Be really chatty, (Default: %default)',
+                  metavar=1)
+(options, args) = parser.parse_args()
+
+
+# show the help if necessary parameters are missing
+if options.Directory is None:
+    parser.print_help()
+    print 'Example:'
+    print 'The command below calculates the overlap of all the stacked', \
+        'scans of sample', bold('SampleName'), 'for an overlap of 15% (give',\
+        'the script a bigger overlap that what you expect) and is really', \
+        'chatty about it.'
+    print ''
+    print sys.argv[0], '-D /sls/X02DA/data/e12740/Data10/disk1/', \
+        'SampleName_B1 -p 15 -v'
+    print ''
+    sys.exit(1)
+
 # clear the commandline
 os.system('clear')
 
@@ -84,7 +122,7 @@ def bold(msg):
     return u'\033[1m%s\033[0m' % msg
 
 
-def myLogger(Folder, LogFileName):
+def myLogger(Folder, LogFileName, verbose=options.Verbose):
     """
     Since logging in a loop does always write to the first instaniated file,
     we make a little wrapper around the logger function to write to a defined
@@ -98,14 +136,15 @@ def myLogger(Folder, LogFileName):
     logger.setLevel(logging.INFO)
     handler = logging.FileHandler(os.path.join(Folder, LogFileName), 'w')
     logger.addHandler(handler)
-    print 'Logging to', os.path.join(Folder, LogFileName)
+    if verbose:
+        print 'Logging to', os.path.join(Folder, LogFileName)
     return logger
 
 
-def normalizeimage(img, depth=1, verbose=False):
+def normalizeimage(img, depth=1, verbose=options.Verbose):
     """Normalize image to chosen bit depth"""
     if verbose:
-        print 'Normalizing image from [' + str(numpy.min(img)) + ':' +\
+        print 'Normalizing input image from [' + str(numpy.min(img)) + ':' +\
               str(numpy.max(img)) + '] to',
     normalizedimage = ((img - numpy.min(img)) * (depth / (numpy.max(img) -
                                                           numpy.min(img))))
@@ -113,44 +152,6 @@ def normalizeimage(img, depth=1, verbose=False):
         print '[' + str(numpy.min(normalizedimage)) + ':' +\
               str(numpy.max(normalizedimage)) + ']'
     return normalizedimage
-
-# Use Pythons Optionparser to define and read the options, and also
-# give some help to the user
-parser = OptionParser()
-usage = "usage: %prog [options] arg"
-parser.add_option('-D', '--Directory', dest='Directory',
-                  help='Location of the *first* subscan of the stack (scan_'
-                  'B1)',
-                  metavar='path')
-parser.add_option('-r', '--Reconstructions', dest='Reconstructions',
-                  help='Choose "DMP", "16bit" or "8bit", otherwise we will '
-                  'ask',
-                  metavar='DMP')
-parser.add_option('-p', '--Percent', dest='Percent',
-                  help='How many percent of stack N+1 should we compare with '
-                  'the last image of stack N. (Default: %default %)',
-                  metavar='14', type=int, default=10)
-parser.add_option('-v', '--verbose', dest='Verbose',
-                  default=False,
-                  action='store_true',
-                  help='Be really chatty, (Default: %default)',
-                  metavar=1)
-(options, args) = parser.parse_args()
-
-
-# show the help if necessary parameters are missing
-if options.Directory is None:
-    parser.print_help()
-    print 'Example:'
-    print 'The command below calculates the overlap of all the stacked', \
-        'scans of sample', bold('SampleName'), 'for an overlap of 15% (give',\
-        'the script a bigger overlap that what you expect) and is really', \
-        'chatty about it.'
-    print ''
-    print sys.argv[0], '-D /sls/X02DA/data/e12740/Data10/disk1/', \
-        'SampleName_B1 -p 15 -v'
-    print ''
-    sys.exit(1)
 
 StartingFolder = os.path.dirname(os.path.abspath(options.Directory))
 SampleBaseName = os.path.basename(os.path.abspath(options.Directory)).replace(
@@ -166,8 +167,8 @@ if options.Verbose:
         print '\t', i
 NumberOfStacks = len(StackList)
 print 'Found a total of', NumberOfStacks, 'stacked scans to go through.'
-print
 
+# See what kind of images we should load
 if not options.Reconstructions:
     # Grab directory of reconstructions.
     # Account for the case that there might be multiple ones
@@ -176,6 +177,7 @@ if not options.Reconstructions:
             bold(os.path.basename(options.Directory))
     RecDirectories = glob.glob(os.path.join(options.Directory, 'rec*'))
     RecDirectories = [os.path.basename(folder) for folder in RecDirectories]
+    print 80 * '-'
     if len(RecDirectories) > 1:
         print 'I found multiple directories with reconstructions.',
         RecDirectory = AskUser('Which one shall I use?', RecDirectories)
@@ -199,6 +201,7 @@ else:
     # add '.tif' for 8 or 16 bit case, so we can easily generate the filename
     if 'DMP' not in options.Reconstructions:
         options.Reconstructions += '.tif'
+print 80 * '-'
 
 # Count number of files in rec folder
 # TODO: parse logfile instead of just counting files
@@ -213,28 +216,34 @@ print 'We will check the top', \
 
 # Go through the stack list
 for StackNumber, Stack in enumerate(StackList[:-1]):
+    # Generate file names
     TopStack = os.path.join(StackList[StackNumber], RecDirectory)
     BottomStack = os.path.join(StackList[StackNumber + 1], RecDirectory)
+    # Inform user
     print 80 * '-'
     print 'Comparing bottom of stack', \
         bold(os.path.basename(os.path.dirname(TopStack))), \
         'with top of stack', \
         bold(os.path.basename(os.path.dirname(BottomStack)))
+    # Set up logging and write log file header
+    LogFileName = '_stackedscan.merge.' + \
+        os.path.basename(os.path.dirname(TopStack)) + '.' + \
+        os.path.basename(os.path.dirname(BottomStack)) + '.log'
     try:
-        logfile = myLogger(BottomStack,
-                           '_stackedscan.merge.B' + str(StackNumber + 1) +
-                           '.B' + str(StackNumber + 2) + '.log')
+        logfile = myLogger(BottomStack, LogFileName)
     except:
-        print 'Cannot write to',\
-            os.path.join(BottomStack,
-                         '_stackedscan.merge.B' + str(StackNumber + 1) + '.B' +
-                         str(StackNumber + 2) + '.log')
+        print 'Cannot write to', os.path.join(BottomStack, LogFileName)
         print 'Does its directory exist?'
         sys.exit(1)
     logfile.info('Log file for stacked scan merging, performed on %s',
                  time.strftime('%d.%m.%Y at %H:%M:%S'))
     logfile.info(80 * '-')
-
+    logfile.info('Comparing the stacks')
+    logfile.info('\t-' + TopStack)
+    logfile.info('\t-' + BottomStack)
+    logfile.info('with each other')
+    logfile.info(80 * '-')
+    # Read bottom image from top stack
     TopStackImageFilename = os.path.join(TopStack,
                                          os.path.basename(os.path.dirname(
                                              TopStack)) +
@@ -245,7 +254,6 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
     else:
         TopStackImage = normalizeimage(plt.imread(TopStackImageFilename))
     logfile.info('Comparing ' + os.path.basename(TopStackImageFilename))
-
     # Prepare image display
     plt.ion()
     plt.figure(figsize=[16, 9])
@@ -256,7 +264,7 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
     plt.imshow(TopStackImage, cmap='gray')
     plt.title(os.path.basename(TopStackImageFilename))
     NumberOfImagesToCheck = NumberOfReconstructions * options.Percent / 100
-    # Go through each image to compare
+    # Go through each image to compare from bottom stack
     for image in range(1, int(NumberOfImagesToCheck)):
         CompareImageFilename = os.path.join(BottomStack,
                                             os.path.basename(
@@ -310,21 +318,24 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
         del CompareImage
         del DifferenceImage
         gc.collect()
-    if options.Verbose:
-        print '%d/%d: Current lowest MSE (%.1e) from ' \
-              '%s\r' % (image, NumberOfImagesToCheck,
-                        numpy.nanmin(MeanSquareErrorVector),
-                        CurrentBestImageName)
-    else:
-        # Clean command-line with "\r" and "flush". From http://is.gd/HCaDv9
-        sys.stdout.write('%d/%d: Current lowest MSE (%.1e) from %s\r' % (
-            image, NumberOfImagesToCheck,
-            numpy.nanmin(MeanSquareErrorVector), CurrentBestImageName))
-        sys.stdout.flush()
+        if options.Verbose:
+            print '%3d/%d: Current lowest MSE (%.1e) from ' \
+                  '%s\r' % (image, NumberOfImagesToCheck,
+                            numpy.nanmin(MeanSquareErrorVector),
+                            CurrentBestImageName)
+        else:
+            # Clean command-line with "\r" & "flush". From http://is.gd/HCaDv9
+            sys.stdout.write('%3d/%d: Current lowest MSE (%.1e) from %s\r' % (
+                image, NumberOfImagesToCheck,
+                numpy.nanmin(MeanSquareErrorVector), CurrentBestImageName))
+            sys.stdout.flush()
+    # Prepare output figure
     OutputFigureName = os.path.join(BottomStack,
-                                    '_stackedscan.difference.B' +
-                                    str(StackNumber + 1) + '.B' +
-                                    str(StackNumber + 2) + '.png')
+                                    '_stackedscan.difference.' +
+                                    os.path.basename(os.path.dirname(
+                                        TopStack)) + '.' +
+                                    os.path.basename(os.path.dirname(
+                                        BottomStack)) + '.png')
     plt.savefig(OutputFigureName, transparent='True')
     plt.close()
     # Tell and log which file is best
@@ -349,7 +360,8 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
                  os.path.basename(BestMatchingImageFilename) +
                  ' with a mean square error of %e' % numpy.nanmin(
                      MeanSquareErrorVector))
-    print 'Image saved to to', OutputFigureName
+    print 'Image saved to', OutputFigureName
+    print 'Logfile written to', LogFileName
 
 print 80 * '-'
 print 'Done with everything'
