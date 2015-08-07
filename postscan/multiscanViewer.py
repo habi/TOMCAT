@@ -2,16 +2,23 @@
 # -*- coding: utf8 -*-
 
 """
-Multiscan Viewer
- Kevin Mader (kevin.mader@gmail.com)
+Multiscan Viewer | Kevin Mader (kevin.mader@gmail.com)
 
- Takes a given slice out of a folder of reconstructions and makes a folder filled with those images. Designed originally for multiple scans done
- with the ManyScanReconHDF5.cmd but has been generalized to work with any prefix
- Input parameter is slice to take, a negative number takes slices every input slices between 0 and 3000 to make multiple
- In the sample directory run
-    python ~/beamline-scripts/postscan/multiscanViewer.py -l 1601
- To run for all samples
- for cdir in *; do cd $cdir; python ~/beamline-scripts/postscan/multiscanViewer.py 1200; cd ..; done
+Takes a given slice out of a folder of reconstructions and makes a folder
+filled with those images.
+Designed originally for multiple scans done with the ManyScanReconHDF5.cmd but
+has been generalized to work with any prefix.
+Input parameter is slice to take, a negative number takes slices every input
+slices between 0 and 3000 to make multiple
+
+In the sample directory run
+   python ~/beamline-scripts/postscan/multiscanViewer.py -l 1601
+To run for all samples
+for cdir in *;
+    do cd $cdir;
+    python ~/beamline-scripts/postscan/multiscanViewer.py 1200;
+    cd ..;
+done
 """
 
 from optparse import OptionParser
@@ -24,7 +31,8 @@ import os
 parser = OptionParser()
 usage = "usage: %prog [options] arg"
 parser.add_option('-s', '--scanprefix', dest='scan_prefix',
-                  help='Scan Prefix Name use % instead of star since linux interprets all stars',
+                  help='Scan Prefix Name use % instead of star since linux '
+                        'interprets all stars',
                   default='rec', metavar='rec')
 parser.add_option('-a', '--angle', dest='angle',
                   help='Angle offset between sizes', metavar='180',
@@ -42,8 +50,9 @@ parser.add_option('-m', '--multiplefolders', dest='multiple',
 
 # starting offset
 sOffset = float(options.initial_angle)
-# offset between scans (!! caution in Scientific Linux mindblowingly shitty python/PIL
-# implementation a rotation of exactly 180 rotate(180) on 16 bit integer images you get garbage
+# offset between scans (!! caution in Scientific Linux mindblowingly shitty
+# python/PIL implementation a rotation of exactly 180 rotate(180) on 16 bit
+# integer images you get garbage
 angOffset = float(options.angle)
 multiple = options.multiple
 sliceNumber = int(options.slice)
@@ -68,7 +77,8 @@ def generate_slices(folder_prefix, sliceNumber):
         print "No Images found"
         return
     # nameIndex = -2
-    # extract the scan number from the path (custom to multiple scans made with kevins script)
+    # extract the scan number from the path (custom to multiple scans made
+    # with kevins script)
     try:
         if multiple:
             scanNumber = range(len(imglist))
@@ -76,7 +86,7 @@ def generate_slices(folder_prefix, sliceNumber):
                             imglist)  # just the folder name
         else:
             scanNumber = map(lambda x: int(x.split('/')[-2].split('_')[-1]),
-                             imglist)  # a scan number extracted from the folder
+                             imglist)  # a scan number extracted from folder
             scanNames = map(lambda i: '%03d' % i, scanNumber)
     except:
         print 'Scan Number could not be automatically extracted'

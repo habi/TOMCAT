@@ -151,14 +151,30 @@ plt.vlines(options.CNRCoordinates[1][0] + options.CNRPixelWidth,
            options.CNRCoordinates[1][1] + options.CNRPixelWidth, 'r')
 plt.draw()
 
-S1 = numpy.mean(Image[options.CNRCoordinates[0][1] - options.CNRPixelWidth:options.CNRCoordinates[0][1] + options.CNRPixelWidth,
-                options.CNRCoordinates[0][0] - options.CNRPixelWidth:options.CNRCoordinates[0][0] + options.CNRPixelWidth])
-S2 = numpy.mean(Image[options.CNRCoordinates[1][1] - options.CNRPixelWidth:options.CNRCoordinates[1][1] + options.CNRPixelWidth,
-                options.CNRCoordinates[1][0] - options.CNRPixelWidth:options.CNRCoordinates[1][0] + options.CNRPixelWidth])
-Sigma1 = numpy.std(Image[options.CNRCoordinates[0][1] - options.CNRPixelWidth:options.CNRCoordinates[0][1] + options.CNRPixelWidth,
-                   options.CNRCoordinates[0][0] - options.CNRPixelWidth:options.CNRCoordinates[0][0] + options.CNRPixelWidth])
-Sigma2 = numpy.std(Image[options.CNRCoordinates[1][1] - options.CNRPixelWidth:options.CNRCoordinates[1][1] + options.CNRPixelWidth,
-                   options.CNRCoordinates[1][0] - options.CNRPixelWidth:options.CNRCoordinates[1][0] + options.CNRPixelWidth])
+S1 = numpy.mean(Image[options.CNRCoordinates[0][1] -
+                      options.CNRPixelWidth:options.CNRCoordinates[0][1] +
+                      options.CNRPixelWidth,
+                      options.CNRCoordinates[0][0] -
+                      options.CNRPixelWidth:options.CNRCoordinates[0][0] +
+                      options.CNRPixelWidth])
+S2 = numpy.mean(Image[options.CNRCoordinates[1][1] -
+                      options.CNRPixelWidth:options.CNRCoordinates[1][1] +
+                      options.CNRPixelWidth,
+                      options.CNRCoordinates[1][0] -
+                      options.CNRPixelWidth:options.CNRCoordinates[1][0] +
+                      options.CNRPixelWidth])
+Sigma1 = numpy.std(Image[options.CNRCoordinates[0][1] -
+                         options.CNRPixelWidth:options.CNRCoordinates[0][1] +
+                         options.CNRPixelWidth,
+                         options.CNRCoordinates[0][0] -
+                         options.CNRPixelWidth:options.CNRCoordinates[0][0] +
+                         options.CNRPixelWidth])
+Sigma2 = numpy.std(Image[options.CNRCoordinates[1][1] -
+                         options.CNRPixelWidth:options.CNRCoordinates[1][1] +
+                         options.CNRPixelWidth,
+                         options.CNRCoordinates[1][0] -
+                         options.CNRPixelWidth:options.CNRCoordinates[1][0] +
+                         options.CNRPixelWidth])
 
 # Output
 print

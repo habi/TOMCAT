@@ -345,7 +345,8 @@ with open(os.path.join(options.SampleFolder, 'PaganinIterator.log'),
 
 # At first we need to calculate the corrected projections, since we're gonna
 # use them for everything.
-cprcommand = ['/afs/psi.ch/project/TOMCAT_pipeline/Beamline/tomcat_pipeline/bin/prj2sinSGE.sh']
+cprcommand = ['/afs/psi.ch/project/TOMCAT_pipeline/Beamline/tomcat_pipeline/'
+              'bin/prj2sinSGE.sh']
 # Since the DefaultParameters is already a list, we don't append, but extend
 cprcommand.extend(DefaultParameters)
 # Give it a nice job name
@@ -430,7 +431,8 @@ for d in Delta:
         print color(' '.join([10 * '-', '|', str(Counter) + '/' + str(Steps),
                               '| delta', str(d), '| beta', str(b), '|',
                               26 * '-']))
-        fltpcommand = ['/afs/psi.ch/project/TOMCAT_pipeline/Beamline/tomcat_pipeline/bin/prj2sinSGE.sh']
+        fltpcommand = ['/afs/psi.ch/project/TOMCAT_pipeline/Beamline/'
+                       'tomcat_pipeline/bin/prj2sinSGE.sh']
         # Add default parameters
         fltpcommand.extend(DefaultParameters)
         # Give it a nice job name
@@ -499,7 +501,8 @@ for d in Delta:
         # Sleep a bit, so that the user has a feeling of stuff happening :)
         time.sleep(sleepytime)
 
-        reconstructioncommand = ['/afs/psi.ch/project/TOMCAT_pipeline/Beamline/tomcat_pipeline/bin/prj2sinSGE.sh']
+        reconstructioncommand = ['/afs/psi.ch/project/TOMCAT_pipeline/'
+                                 'Beamline/tomcat_pipeline/bin/prj2sinSGE.sh']
         # Extending list with DefaultParameters, appending the rest
         reconstructioncommand.extend(DefaultParameters)
         # Use the center of rotation found above or input by the user
@@ -539,8 +542,10 @@ for d in Delta:
             reconstructioncommand.append('-o ' +
                                          os.path.join(options.SampleFolder,
                                                       'rec_DMP_' +
-                                                      str(options.SliceNumber).zfill(4) +
-                                                      '_' + str(d) + '_' +
+                                                      str(
+                                                          options.SliceNumber).
+                                                      zfill(4) + '_' +
+                                                      str(d) + '_' +
                                                       str(b) + '_' +
                                                       str(options.Distance)))
             # Do it with those files
@@ -617,36 +622,26 @@ else:
     for d in Delta:
         for b in Beta:
             if options.SliceNumber:
-                print '        *', \
-                    os.path.basename(os.path.join(options.SampleFolder,
-                                                  'fltp_' +
-                                                  str(options.SliceNumber).zfill(4) +
-                                                  '_' + str(d) + '_' +
-                                                  str(b) + '_' +
-                                                  str(options.Distance)))
+                print '\t*', os.path.basename(os.path.join(
+                    options.SampleFolder, 'fltp_' +
+                    str(options.SliceNumber).zfill(4) + '_' + str(d) + '_' +
+                    str(b) + '_' + str(options.Distance)))
             else:
-                print '        *', \
-                    os.path.basename(os.path.join(options.SampleFolder,
-                                                  'fltp_' + str(d) + '_' +
-                                                  str(b) + '_' +
-                                                  str(options.Distance)))
+                print '\t*', os.path.basename(os.path.join(
+                    options.SampleFolder, 'fltp_' +
+                    str(d) + '_' + str(b) + '_' + str(options.Distance)))
     print '\t* and these directories with reconstructed DMPs:'
     for d in Delta:
         for b in Beta:
             if options.SliceNumber:
-                print '        *', \
-                    os.path.basename(os.path.join(options.SampleFolder,
-                                                  'rec_DMP_' +
-                                                  str(options.SliceNumber).zfill(4) +
-                                                  '_' + str(d) + '_' +
-                                                  str(b) + '_' +
-                                                  str(options.Distance)))
+                print '\t*', os.path.basename(os.path.join(
+                    options.SampleFolder, 'rec_DMP_' +
+                    str(options.SliceNumber).zfill(4) + '_' + str(d) + '_' +
+                    str(b) + '_' + str(options.Distance)))
             else:
-                print '        *', \
-                    os.path.basename(os.path.join(options.SampleFolder,
-                                                  'rec_DMP_' + str(d) + '_' +
-                                                  str(b) + '_' +
-                                                  str(options.Distance)))
+                print '\t*', os.path.basename(os.path.join(
+                    options.SampleFolder, 'rec_DMP_' +
+                    str(d) + '_' + str(b) + '_' + str(options.Distance)))
     print 80 * '-'
 
     # Save small bash script to open a set of images images in Fiji
