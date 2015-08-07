@@ -154,11 +154,12 @@ if options.Directory is None:
 
 StartingFolder = os.path.dirname(os.path.abspath(options.Directory))
 SampleBaseName = os.path.basename(os.path.abspath(options.Directory)).replace(
-    '_B1', '')
+    '_B1', '_B*')
 # Find number of stacks that were scanned
 print 'Looking for all stacked scans of', bold(SampleBaseName), 'in', \
     bold(StartingFolder)
-StackList = glob.glob(os.path.join(StartingFolder, SampleBaseName + '*'))
+StackList = sorted(glob.glob(os.path.join(StartingFolder,
+                                          SampleBaseName + '*')))
 if options.Verbose:
     print 'I found'
     for i in StackList:
@@ -173,14 +174,14 @@ if not options.Reconstructions:
     if options.Verbose:
         print 'Looking for folders with reconstructions in', \
             bold(os.path.basename(options.Directory))
-    RecDirectories = glob.glob(os.path.join(options.Directory, '*rec*'))
+    RecDirectories = glob.glob(os.path.join(options.Directory, 'rec*'))
     RecDirectories = [os.path.basename(folder) for folder in RecDirectories]
     if len(RecDirectories) > 1:
         print 'I found multiple directories with reconstructions.',
         RecDirectory = AskUser('Which one shall I use?', RecDirectories)
     else:
         if options.Verbose:
-            print 'I only found one rec folder'
+            print 'I found only one rec folder, using that one.'
         RecDirectory = RecDirectories[0]
     print 'Working with the reconstructions in the rec folder', \
         bold(os.path.basename(RecDirectory))
@@ -203,7 +204,6 @@ else:
 # TODO: parse logfile instead of just counting files
 NumberOfReconstructions = len(glob.glob(os.path.join(StackList[0],
                               RecDirectory, '*.' + options.Reconstructions)))
-
 print 'We found', NumberOfReconstructions,\
     'reconstructions in the rec folder of the first stack.'
 print 'We will check the top', \
@@ -236,7 +236,8 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
     logfile.info(80 * '-')
 
     TopStackImageFilename = os.path.join(TopStack,
-                                         os.path.basename(os.path.dirname(TopStack)) +
+                                         os.path.basename(os.path.dirname(
+                                             TopStack)) +
                                          str(NumberOfReconstructions) +
                                          '.rec.' + options.Reconstructions)
     if 'DMP' in options.Reconstructions:
@@ -258,7 +259,8 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
     # Go through each image to compare
     for image in range(1, int(NumberOfImagesToCheck)):
         CompareImageFilename = os.path.join(BottomStack,
-                                            os.path.basename(os.path.dirname(BottomStack)) +
+                                            os.path.basename(
+                                                os.path.dirname(BottomStack)) +
                                             str(image).zfill(4) + '.rec.' +
                                             options.Reconstructions)
         if 'DMP' in options.Reconstructions:
@@ -320,8 +322,9 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
             numpy.nanmin(MeanSquareErrorVector), CurrentBestImageName))
         sys.stdout.flush()
     OutputFigureName = os.path.join(BottomStack,
-                                    '_stackedscan.difference.B' + str(StackNumber + 1) +
-                                    '.B' + str(StackNumber + 2) + '.png')
+                                    '_stackedscan.difference.B' +
+                                    str(StackNumber + 1) + '.B' +
+                                    str(StackNumber + 2) + '.png')
     plt.savefig(OutputFigureName, transparent='True')
     plt.close()
     # Tell and log which file is best
@@ -329,7 +332,9 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
     BestMatchingImageNmbr = numpy.ndarray.tolist(
         MeanSquareErrorVector).index(numpy.nanmin(MeanSquareErrorVector))
     BestMatchingImageFilename = os.path.join(BottomStack,
-                         os.path.basename(os.path.dirname(BottomStack)) +
+                                             os.path.basename(
+                                                 os.path.dirname(
+                                                     BottomStack)) +
                                              str(BestMatchingImageNmbr).zfill(
                                                  4) + '.rec.' +
                                              options.Reconstructions)
