@@ -60,8 +60,8 @@ def getLogParameter(logLines, parmName, outName=None):
         cParam = filter(lambda line: line.find(parmName) >= 0,
                         logLines)[-1].strip()
         try:
-            return outName.join([x.strip() for x in cParam.split(parmName)]) +\
-                ':'
+            return outName.join([x.strip() for x in
+                                 cParam.split(parmName)]) + ':'
         except:
             return  # Could not be split correctly
     except:
@@ -87,7 +87,8 @@ def getRot(foldName):  # get the rotation center from the log file
 
 def fixFolderName(cFolder, cSuffix):
     newSuffix = folders.get(cSuffix, cSuffix)
-    return newSuffix + '(' + str(len(glob(cFolder + '/' + cSuffix + '/*'))) + ')'
+    return newSuffix + '(' + str(len(glob(cFolder + '/' + cSuffix +
+                                          '/*'))) + ')'
 
 for cfold in sorted(allsamples.keys()):
     cSubDirs = allsamples[cfold]
