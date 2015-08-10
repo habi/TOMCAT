@@ -272,6 +272,9 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
     # Prepare image display
     plt.ion()
     plt.figure(figsize=[16, 9])
+    plt.suptitle('Comparing "%s" of %s with ../%s' % (RecDirectory,
+                 os.path.dirname(TopStack),
+                 os.path.basename(os.path.dirname(BottomStack))))
     MeanSquareErrorVector = numpy.empty(NumberOfReconstructions + 1)
     MeanSquareErrorVector[:] = numpy.nan
     # Show image we compare all the images to
