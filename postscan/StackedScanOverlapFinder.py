@@ -22,11 +22,6 @@ import numpy
 import time
 import gc
 import sys
-if 'cons' in platform.node():
-    # Set up a more recent version of matplotlib by loading EPD. This helps
-    # with loading 16bit tiffs, since matplotlib versions < 1.00 cannot
-    # easily read them
-    os.system('module load xbl/epd_free/7.3-2-2013.06')
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -46,6 +41,10 @@ parser.add_option('-p', '--Percent', dest='Percent',
                   help='How many percent of stack N+1 should we compare with '
                   'the last image of stack N. (Default: %default %)',
                   metavar='14', type=int, default=10)
+parser.add_option('-o', '--Offset', dest='Offset',
+                  help='Do not use the bottom/last slice, but the one with '
+                  'this offset. (Default: %default)',
+                  metavar='7', type=int, default=0)
 parser.add_option('-v', '--verbose', dest='Verbose',
                   default=False,
                   action='store_true',
@@ -68,11 +67,18 @@ if options.Directory is None:
     print ''
     sys.exit(1)
 
+# Make sure we are running a good version of matplotlib
+if str(matplotlib.__version__)[0] < 1:
+    print 'We are running matplotlib version', matplotlib.__version__, 'on', \
+        platform.node()
+    print 'To make this script work, we need a matplotlib version > 1.'
+    print 'To load such a version, please enter the following command in', \
+        'the terminal  and restart the script.'
+    print '\n\tmodule load xbl/epd_free/7.3-2-2013.06'
+    sys.exit()
+
 # clear the commandline
 os.system('clear')
-
-print 'We are running matplotlib version', matplotlib.__version__, 'on', \
-    platform.node()
 
 
 def readDMP(filename):
@@ -207,12 +213,17 @@ print 80 * '-'
 # TODO: parse logfile instead of just counting files
 NumberOfReconstructions = len(glob.glob(os.path.join(StackList[0],
                               RecDirectory, '*.' + options.Reconstructions)))
+# Find out how many zeroes we have to add
+ZeroFilling = len(str(NumberOfReconstructions))
 print 'We found', NumberOfReconstructions,\
     'reconstructions in the rec folder of the first stack.'
 print 'We will check the top', \
     str(int(NumberOfReconstructions * options.Percent / 100)), \
-    'images (' + str(options.Percent) + \
-    '%) of the scan N+1 with the bottom image of stack N.'
+    'images (' + str(options.Percent), '%) of the scan N+1 with the',
+if options.Offset:
+    print 'image "bottom - %s" of stack N.' % options.Offset
+else:
+    print 'bottom image of stack N.'
 
 # Go through the stack list
 for StackNumber, Stack in enumerate(StackList[:-1]):
@@ -221,8 +232,11 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
     BottomStack = os.path.join(StackList[StackNumber + 1], RecDirectory)
     # Inform user
     print 80 * '-'
-    print 'Comparing bottom of stack', \
-        bold(os.path.basename(os.path.dirname(TopStack))), \
+    if options.Offset:
+        print 'Comparing "bottom - %s" of stack.' % options.Offset,
+    else:
+        print 'Comparing bottom of stack',
+    print bold(os.path.basename(os.path.dirname(TopStack))), \
         'with top of stack', \
         bold(os.path.basename(os.path.dirname(BottomStack)))
     # Set up logging and write log file header
@@ -247,8 +261,9 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
     TopStackImageFilename = os.path.join(TopStack,
                                          os.path.basename(os.path.dirname(
                                              TopStack)) +
-                                         str(NumberOfReconstructions) +
-                                         '.rec.' + options.Reconstructions)
+                                         str(NumberOfReconstructions -
+                                             options.Offset) + '.rec.' +
+                                         options.Reconstructions)
     if 'DMP' in options.Reconstructions:
         TopStackImage = readDMP(TopStackImageFilename)
     else:
@@ -269,8 +284,8 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
         CompareImageFilename = os.path.join(BottomStack,
                                             os.path.basename(
                                                 os.path.dirname(BottomStack)) +
-                                            str(image).zfill(4) + '.rec.' +
-                                            options.Reconstructions)
+                                            str(image).zfill(ZeroFilling) +
+                                            '.rec.' + options.Reconstructions)
         if 'DMP' in options.Reconstructions:
             CompareImage = readDMP(CompareImageFilename)
         else:
@@ -347,7 +362,7 @@ for StackNumber, Stack in enumerate(StackList[:-1]):
                                                  os.path.dirname(
                                                      BottomStack)) +
                                              str(BestMatchingImageNmbr).zfill(
-                                                 4) + '.rec.' +
+                                                 ZeroFilling) + '.rec.' +
                                              options.Reconstructions)
     print 'Best match between images', \
         bold(os.path.basename(TopStackImageFilename)), 'and', \
