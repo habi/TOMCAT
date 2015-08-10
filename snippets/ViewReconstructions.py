@@ -68,7 +68,8 @@ if options.PDF:
         PDFName = 'Overview_' + options.filter
     else:
         PDFName = 'Overview'
-    PDF = PdfPages(os.path.join(os.path.abspath(os.getcwd()), PDFName + '.pdf'))
+    PDF = PdfPages(os.path.join(os.path.abspath(os.getcwd()),
+                                PDFName + '.pdf'))
     print 'Saving image of',
 else:
     print 'Showing',
