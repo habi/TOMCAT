@@ -1,4 +1,4 @@
-cpr
-fltp
-sin
+cpr*
+fltp*
+sin*
 viewrec
