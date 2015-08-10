@@ -25,62 +25,8 @@ import sys
 import matplotlib
 import matplotlib.pyplot as plt
 
-# Use Pythons Optionparser to define and read the options, and also
-# give some help to the user
-parser = OptionParser()
-usage = "usage: %prog [options] arg"
-parser.add_option('-D', '--Directory', dest='Directory',
-                  help='Location of the *first* subscan of the stack (scan_'
-                  'B1)',
-                  metavar='path')
-parser.add_option('-r', '--Reconstructions', dest='Reconstructions',
-                  help='Choose "DMP", "16bit" or "8bit", otherwise we will '
-                  'ask',
-                  metavar='DMP')
-parser.add_option('-p', '--Percent', dest='Percent',
-                  help='How many percent of stack N+1 should we compare with '
-                  'the last image of stack N. (Default: %default %)',
-                  metavar='14', type=int, default=10)
-parser.add_option('-o', '--Offset', dest='Offset',
-                  help='Do not use the bottom/last slice, but the one with '
-                  'this offset. (Default: %default)',
-                  metavar='7', type=int, default=0)
-parser.add_option('-v', '--verbose', dest='Verbose',
-                  default=False,
-                  action='store_true',
-                  help='Be really chatty, (Default: %default)',
-                  metavar=1)
-(options, args) = parser.parse_args()
 
-
-# show the help if necessary parameters are missing
-if options.Directory is None:
-    parser.print_help()
-    print 'Example:'
-    print 'The command below calculates the overlap of all the stacked', \
-        'scans of sample', bold('SampleName'), 'for an overlap of 15% (give',\
-        'the script a bigger overlap that what you expect) and is really', \
-        'chatty about it.'
-    print ''
-    print sys.argv[0], '-D /sls/X02DA/data/e12740/Data10/disk1/', \
-        'SampleName_B1 -p 15 -v'
-    print ''
-    sys.exit(1)
-
-# Make sure we are running a good version of matplotlib
-if str(matplotlib.__version__)[0] < 1:
-    print 'We are running matplotlib version', matplotlib.__version__, 'on', \
-        platform.node()
-    print 'To make this script work, we need a matplotlib version > 1.'
-    print 'To load such a version, please enter the following command in', \
-        'the terminal  and restart the script.'
-    print '\n\tmodule load xbl/epd_free/7.3-2-2013.06'
-    sys.exit()
-
-# clear the commandline
-os.system('clear')
-
-
+# Define handy functions
 def readDMP(filename):
     """
     Opens and reads DMP file.
@@ -159,6 +105,62 @@ def normalizeimage(img, depth=1, verbose=options.Verbose):
               str(numpy.max(normalizedimage)) + ']'
     return normalizedimage
 
+# Use Pythons Optionparser to define and read the options, and also
+# give some help to the user
+parser = OptionParser()
+usage = "usage: %prog [options] arg"
+parser.add_option('-D', '--Directory', dest='Directory',
+                  help='Location of the *first* subscan of the stack (scan_'
+                  'B1)',
+                  metavar='path')
+parser.add_option('-r', '--Reconstructions', dest='Reconstructions',
+                  help='Choose "DMP", "16bit" or "8bit", otherwise we will '
+                  'ask',
+                  metavar='DMP')
+parser.add_option('-p', '--Percent', dest='Percent',
+                  help='How many percent of stack N+1 should we compare with '
+                  'the last image of stack N. (Default: %default %)',
+                  metavar='14', type=int, default=10)
+parser.add_option('-o', '--Offset', dest='Offset',
+                  help='Do not use the bottom/last slice, but the one with '
+                  'this offset. (Default: %default)',
+                  metavar='7', type=int, default=0)
+parser.add_option('-v', '--verbose', dest='Verbose',
+                  default=False,
+                  action='store_true',
+                  help='Be really chatty, (Default: %default)',
+                  metavar=1)
+(options, args) = parser.parse_args()
+
+
+# Show the help (-h) if necessary parameter (-D) is missing
+if options.Directory is None:
+    parser.print_help()
+    print 'Example:'
+    print 'The command below calculates the overlap of all the stacked', \
+        'scans of sample', bold('SampleName'), 'for an overlap of 11% (give',\
+        'the script a bigger overlap that what you expect) and is really', \
+        'chatty about it.'
+    print ''
+    print sys.argv[0], '-D /sls/X02DA/data/e12740/Data10/disk1/', \
+        'SampleName_B1 -p 11 -v'
+    print ''
+    sys.exit(1)
+
+# Make sure we are running a good version of matplotlib
+if str(matplotlib.__version__)[0] < 1:
+    print 'We are running matplotlib version', matplotlib.__version__, 'on', \
+        platform.node()
+    print 'To make this script work, we need a matplotlib version > 1.'
+    print 'To load such a version, please enter the following command in', \
+        'the terminal  and restart the script.'
+    print '\n\tmodule load xbl/epd_free/7.3-2-2013.06'
+    sys.exit()
+
+# clear the commandline
+os.system('clear')
+
+# All systems GO!
 StartingFolder = os.path.dirname(os.path.abspath(options.Directory))
 SampleBaseName = os.path.basename(os.path.abspath(options.Directory)).replace(
     '_B1', '_B*')
