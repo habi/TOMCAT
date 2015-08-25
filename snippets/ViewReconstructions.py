@@ -68,8 +68,8 @@ if options.PDF:
         PDFName = 'Overview_' + options.filter
     else:
         PDFName = 'Overview'
-    PDF = PdfPages(os.path.join(os.path.abspath(os.getcwd()),
-                                PDFName + '.pdf'))
+    PDFPath = os.path.join(os.path.abspath(os.getcwd()), PDFName + '.pdf')
+    PDF = PdfPages(PDFPath)
     print 'Saving image of',
 else:
     print 'Showing',
@@ -77,8 +77,7 @@ print 'three slices for each of the %s found reconstruction ' \
       'folders in the subfolder of %s\n' \
       % (len(ReconstructionFolders), os.path.basename(os.getcwd()))
 if options.PDF:
-    print 'All your images are going to a PDF called %s\n' % os.path.join(
-        os.path.abspath(os.getcwd()), PDFName)
+    print 'All your images are will be saved to %s\n' % PDFPath
 
 for counter, CurrentFolder in enumerate(ReconstructionFolders):
     if len(glob.glob(os.path.join(CurrentFolder, '*.DMP'))):
@@ -139,8 +138,6 @@ for counter, CurrentFolder in enumerate(ReconstructionFolders):
             CurrentFolder))
         plt.tight_layout()
         if options.PDF:
-            print '\tAdding page to %s' % os.path.join(
-                os.path.abspath(os.getcwd()), PDFName)
             plt.savefig(PDF, format='pdf')
         plt.show()
 
@@ -148,6 +145,5 @@ if options.PDF:
     print 'Saving the PDF will take a while...'
     print 'Especially if you requested lots of images.'
     PDF.close()
-    print 'All your images are now in %s' % os.path.join(
-        os.path.abspath(os.getcwd()), PDFName)
+    print 'All your images are now in %s' % PDFPath
 print 'Done'
