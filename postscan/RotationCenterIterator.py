@@ -33,29 +33,29 @@ parser.add_option('-s', '--sinogram', dest='Sinogram',
                   default=1001,
                   type='int',
                   help='Sinogram Number you want to reconstruct with '
-                  'different rotation center (Default=1001)',
+                  'different rotation center (Default=%default)',
                   metavar='51')
 parser.add_option('-c', '--center', dest='RotationCenter',
                   type='float',
                   help='RotationCenter for reconstructing the slices '
-                  '(Default=Read from logfile or set to 1024 if nothing found '
+                  '(Default=Read from logfile or set to 1280 if nothing found '
                   'in logfile)',
                   metavar='2037.5')
 parser.add_option('-r', '--range', dest='Range',
                   default=4,
                   type='float',
                   help='Use this as a range to iterate around the '
-                  'RotationCenter (Default=4)',
+                  'RotationCenter (Default=%default)',
                   metavar='3')
 parser.add_option('-i', '--iteration', dest='Iteration',
                   default=0.5,
                   type='float',
-                  help='Use this value as iteration step, (Default=0.5)',
+                  help='Use this value as iteration step, (Default=%default)',
                   metavar=0.5)
 parser.add_option('-z', dest='ZeroPadding',
                   default=0.5,
                   type='float',
-                  help='ZeroPadding, (Default=0.5)',
+                  help='ZeroPadding, (Default=%default)',
                   metavar=0.5)
 parser.add_option('-f', '--filter', dest='Filter',
                   type='str',
@@ -278,14 +278,14 @@ if options.RotationCenter is None:
         Rotationcenter.
         """
         if len(currentline) > 0:
-            if currentline[0] == 'Rotation' and currentline[1] == 'center':
+            if currentline[0] == 'Original' and currentline[2] == 'center:':
                 options.RotationCenter = float(line.split(':')[1].strip())
     if options.Verbose:
         print 'Rotation center set to', options.RotationCenter
     if options.RotationCenter is None:
-        options.RotationCenter = 1024
+        options.RotationCenter = 1280
         if options.Verbose:
-            print 'No Rotation center found in LogFile, setting it to 1024.'
+            print 'No Rotation center found in LogFile, setting it to 1280.'
 
 # Make a vector with the Rotationcenter varying from Rot-Range to Rot+Range in
 # 'Iteration' steps.

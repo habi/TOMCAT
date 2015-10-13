@@ -168,7 +168,7 @@ for line in LogFile:
     # Only do this for existing lines
     if len(line.split()) > 0:
         # Rotation center
-        if line.split()[0] == 'Rotation' and line.split()[1] == 'center:':
+        if line.split()[0] == 'Original' and line.split()[2] == 'center:':
             if not options.RotationCenter:
                 options.RotationCenter = float(line.split(':')[1])
         # Scan parameters
