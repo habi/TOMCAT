@@ -33,7 +33,7 @@ def readDMP(filename):
     dmpfile.close()
     return image
 
-# Get DMP file name, read it in and write it out as JPG
+# Get DMP file name, read it in and write it out as PNG
 DMPFileName = sys.argv[1]
 Image = readDMP(DMPFileName)
 misc.imsave(os.path.splitext(os.path.abspath(DMPFileName))[0] + '.png', Image)
